@@ -2,6 +2,7 @@
 import { VACIO, formatoPorcentaje } from './participacion.js';
 import { TIPO_ELECCION, VARIANTES } from './resumen.js';
 import { tablaRecuento } from './vistasRecuento.js';
+import { bloqueSenado, tablaSenado } from './vistasSenado.js';
 import { crudo, html, recurso } from './vistas.js';
 
 const corto = (p) => formatoPorcentaje(p).replace(' %', '%');
@@ -106,22 +107,26 @@ const selloRecuento = (r) =>
     ? html`<p class="sello provisional">PROVISIONAL · ${r.cerradas}/${r.totalMesas} mesas escrutadas</p>`
     : html`<p class="sello completo">COMPLETO · ${r.cerradas}/${r.totalMesas} mesas escrutadas</p>`;
 
-export function lienzoPantallazo({ colegio, resumen, resumenRecuento = null, variante, modo, hora, fecha, texto }) {
+export function lienzoPantallazo({ colegio, resumen, resumenRecuento = null, resumenSenado = null, variante, modo, hora, fecha, texto }) {
   const demo = modo === 'DEMO';
   const esRecuento = variante.id === 'recuento';
+  const esSenado = variante.id === 'senado';
   return html`<div class="lienzo" id="lienzo">
   ${demo ? html`<div class="marca-agua" aria-hidden="true"><span>DEMO</span></div>` : ''}
   <header class="lienzo-cabecera">
     <h1>${colegio}</h1>
-    <p class="subtitulo-lienzo">${TIPO_ELECCION} · ${esRecuento ? 'Recuento del Congreso' : variante.etiqueta}</p>
+    <p class="subtitulo-lienzo">${TIPO_ELECCION} · ${esRecuento ? 'Recuento del Congreso' : esSenado ? 'Senado' : variante.etiqueta}</p>
     <p class="hora-pantallazo">Actualizado <time id="hora-actualizacion">${hora}</time></p>
     <p class="fecha-pantallazo">${fecha} · hora de Madrid</p>
   </header>
   ${sinConexion(hora)}
   ${demo ? html`<p class="sello demo">DEMO · DATOS DE PRUEBA</p>` : ''}
-  ${esRecuento ? selloRecuento(resumenRecuento) : sello(resumen)}
-  ${esRecuento ? tablaRecuento(resumenRecuento) : variante.id === 'ultimo' ? tablaUltimo(resumen) : tablaParticipacion(resumen)}
-  ${esRecuento
+  ${esRecuento ? selloRecuento(resumenRecuento) : esSenado ? selloRecuento(resumenSenado) : sello(resumen)}
+  ${esRecuento ? tablaRecuento(resumenRecuento) : esSenado ? tablaSenado(resumenSenado) : variante.id === 'ultimo' ? tablaUltimo(resumen) : tablaParticipacion(resumen)}
+  ${esSenado ? bloqueSenado(resumenSenado) : ''}
+  ${esSenado
+    ? html`<p class="nota-lienzo">% sobre papeletas válidas (cada elector marca hasta 3 nombres: no suman 100). Solo mesas cerradas.</p>`
+    : esRecuento
     ? html`<p class="nota-lienzo">% sobre votos válidos (candidaturas + blancos). Solo mesas cerradas.</p>`
     : resumen.provisional && resumen.indiceUltimo >= 0
       ? html`<p class="nota-lienzo">TOTAL: % sobre el censo de las mesas informadas.</p>`

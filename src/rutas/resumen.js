@@ -1,5 +1,7 @@
 import { hojaCandidaturas, listarCandidaturas } from '../candidaturas.js';
+import { listarCandidatos } from '../candidatosSenado.js';
 import { construirResumenRecuento, textoRecuento } from '../recuento.js';
+import { construirResumenSenado, textoSenado } from '../senado.js';
 import { TIPO_ELECCION, construirResumen, elegirVariante, textoWhatsApp } from '../resumen.js';
 import { listarCortes } from '../servicioParticipacion.js';
 import { formatearMadrid } from '../tiempo.js';
@@ -34,11 +36,17 @@ export default async function rutasResumen(app) {
     const resumenRecuento = esRecuento
       ? construirResumenRecuento({ mesas: resumen.mesas.map((f) => f.mesa), candidaturas: listarCandidaturas(db), recuentos: req.captura.listarRecuentos() })
       : null;
+    const esSenado = variante.id === 'senado';
+    const resumenSenado = esSenado
+      ? construirResumenSenado({ mesas: resumen.mesas.map((f) => f.mesa), candidatos: listarCandidatos(db), registros: req.captura.listarSenado() })
+      : null;
     const texto = esRecuento
       ? textoRecuento({ resumen: resumenRecuento, colegio, modo, actualizado, tipoEleccion: TIPO_ELECCION })
-      : textoWhatsApp({ resumen, variante: variante.id, colegio, modo, actualizado });
-    const cuerpo = lienzoPantallazo({ colegio, resumen, resumenRecuento, variante, modo, hora, fecha, texto });
+      : esSenado
+        ? textoSenado({ resumen: resumenSenado, colegio, modo, actualizado, tipoEleccion: TIPO_ELECCION })
+        : textoWhatsApp({ resumen, variante: variante.id, colegio, modo, actualizado });
+    const cuerpo = lienzoPantallazo({ colegio, resumen, resumenRecuento, resumenSenado, variante, modo, hora, fecha, texto });
     const titulo = `${modo === 'DEMO' ? 'DEMO · ' : ''}Pantallazo · ${variante.etiqueta}`;
-    return responder(reply, pagina(titulo, cuerpo.texto, { claseBody: 'pantallazo', hojas: esRecuento ? [hojaCandidaturas(db).url] : [] }));
+    return responder(reply, pagina(titulo, cuerpo.texto, { claseBody: 'pantallazo', hojas: esRecuento || esSenado ? [hojaCandidaturas(db).url] : [] }));
   });
 }

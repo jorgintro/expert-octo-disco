@@ -15,20 +15,21 @@
     if (actual && otro) actual.replaceWith(document.importNode(otro, true));
   }
 
-  // Desglose de «Otros» del pantallazo de recuento: el estado se guarda en el dispositivo y se
-  // reaplica tras cada refresco del sondeo y al volver de otra variante.
-  var CLAVE_OTROS = 'tiroriro:recuento:otros';
-  function aplicarOtros() {
-    var d = document.querySelector('details.rec-otros');
-    if (!d) return;
-    try { if (sessionStorage.getItem(CLAVE_OTROS) === '1') d.open = true; } catch (e) { /* sin almacenamiento */ }
+  // Desplegables del pantallazo (Otros del Congreso, Resto del Senado): el estado abierto/cerrado se guarda en el
+  // dispositivo (sessionStorage) por desplegable (data-persistir) y se reaplica tras cada refresco del sondeo y al
+  // volver de otra variante.
+  var PREFIJO = 'tiroriro:';
+  function aplicarDesplegables() {
+    [].slice.call(document.querySelectorAll('details[data-persistir]')).forEach(function (d) {
+      try { if (sessionStorage.getItem(PREFIJO + d.getAttribute('data-persistir')) === '1') d.open = true; } catch (e) { /* sin almacenamiento */ }
+    });
   }
   document.addEventListener('toggle', function (e) {
     var d = e.target;
-    if (!d || !d.classList || !d.classList.contains('rec-otros')) return;
-    try { sessionStorage.setItem(CLAVE_OTROS, d.open ? '1' : '0'); } catch (err) { /* sin almacenamiento */ }
+    if (!d || !d.hasAttribute || !d.hasAttribute('data-persistir')) return;
+    try { sessionStorage.setItem(PREFIJO + d.getAttribute('data-persistir'), d.open ? '1' : '0'); } catch (err) { /* sin almacenamiento */ }
   }, true);
-  aplicarOtros();
+  aplicarDesplegables();
 
   function sesionCaducada() {
     if (temporizador) clearInterval(temporizador);
@@ -60,14 +61,14 @@
       .then(function (texto) {
         if (texto === null) return;
         var nuevo = new DOMParser().parseFromString(texto, 'text/html');
-        var detalles = document.querySelector('main details:not(.rec-otros)');
+        var detalles = document.querySelector('main details:not([data-persistir])');
         var abierto = detalles ? detalles.open : false;
         reemplazar(nuevo, '#banner-modo'); // también cambia si el modo cambia
         reemplazar(nuevo, 'main');
         reemplazar(nuevo, 'footer');
-        var nuevosDetalles = document.querySelector('main details:not(.rec-otros)');
+        var nuevosDetalles = document.querySelector('main details:not([data-persistir])');
         if (nuevosDetalles) nuevosDetalles.open = abierto;
-        aplicarOtros();
+        aplicarDesplegables();
         document.title = nuevo.title;
         document.body.classList.remove('sin-conexion');
       })

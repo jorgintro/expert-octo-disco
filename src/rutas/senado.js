@@ -5,7 +5,7 @@ import { esPeticionFetch, versionDeBody } from '../entradaRecuento.js';
 import { senadoAbierto } from '../recuentoEstado.js';
 import { construirResumenSenado } from '../senado.js';
 import {
-  abrirSenado, cargarMesaSenado, cerrarSenado, comprobarAperturaSenado, guardarSenadoMesa, reabrirSenadoMesa, reiniciarSenadoMesa,
+  abrirSenado, cargarMesaSenado, cerrarSenado, comprobarAperturaSenado, guardarSenadoMesa, pasarSenadoATotales, reabrirSenadoMesa, reiniciarSenadoMesa,
 } from '../servicioSenado.js';
 import { formatearMadrid } from '../tiempo.js';
 import { html, paginaAdmin, recurso, responder } from '../vistas.js';
@@ -116,7 +116,7 @@ ${matrizSenado(resumen)}
   const base = (mesaId) => `/admin/senado/mesa/${mesaId}`;
   const noEncontrada = (req, reply) => responder(reply, paginaAdmin('Mesa no encontrada', req.ctx(), '<p><a href="/admin/senado">Volver al recuento del Senado</a></p>'), 404);
 
-  function pantallaMesa(req, mesaId, { entrada = null, error = null, confirmacion = null, reiniciar = false, version = null } = {}) {
+  function pantallaMesa(req, mesaId, { entrada = null, error = null, confirmacion = null, reiniciar = false, pasar = false, version = null } = {}) {
     const datos = cargarMesaSenado(db, req.captura, mesaId);
     if (!datos) return null;
     const ctx = ctxHoja(req, { error });
@@ -133,6 +133,12 @@ ${matrizSenado(resumen)}
   <input type="hidden" name="version" value="${cab.version}">
   <button type="submit" class="boton boton-sec">Reabrir la mesa</button>
 </form>` : ''}
+${cab.modo === 'sabana' ? html`<form method="post" action="${base(mesaId)}/pasar-a-totales" class="formulario">
+  <input type="hidden" name="_csrf" value="${ctx.csrf}">
+  <input type="hidden" name="version" value="${cab.version}">
+  <button type="submit" class="boton boton-sec">Pasar a modo totales conservando cifras…</button>
+</form>
+<p class="nota">Copia los contadores actuales al modo totales, que pasa a ser editable. La mesa deja de contar en la estadística de bloque.</p>` : html`<p class="nota">Modo totales: datos de bloque no disponibles.</p>`}
 <form method="post" action="${base(mesaId)}/reiniciar" class="formulario">
   <input type="hidden" name="_csrf" value="${ctx.csrf}">
   <input type="hidden" name="version" value="${cab.version}">
@@ -151,6 +157,23 @@ ${matrizSenado(resumen)}
     <input type="hidden" name="version" value="${cab?.version ?? 0}">
     <input type="hidden" name="confirmar" value="1">
     <button type="submit" class="boton">Sí, reiniciar</button>
+  </form>
+  <p><a class="boton boton-sec" href="${base(mesaId)}">No, volver</a></p>
+</section>`;
+    } else if (pasar) {
+      cuerpo = html`<section class="tarjeta confirmar" role="alert">
+  <h2>¿Pasar la mesa ${datos.mesa.codigo} a modo totales?</h2>
+  <p>Se conservan las cifras: votos por candidato (${[...datos.votos.values()].reduce((a, x) => a + x, 0)} en total), papeletas válidas (${cab?.validas ?? 0}), en blanco (${cab?.blancas ?? 0}) y nulas (${cab?.nulas ?? 0}). Se descarta el desglose por número de marcas: la mesa quedará con «datos de bloque no disponibles» y dejará de contar en la estadística de bloque. A partir de ahí se edita en totales. Queda en la auditoría con los valores anteriores y nuevos.</p>
+  <form method="post" action="${base(mesaId)}/pasar-a-totales" class="formulario">
+    <input type="hidden" name="_csrf" value="${ctx.csrf}">
+    <input type="hidden" name="version" value="${cab?.version ?? 0}">
+    <input type="hidden" name="confirmar" value="1">
+    ${cab?.estado === 'cerrado'
+      ? html`<fieldset class="opciones"><legend>La mesa está cerrada; después…</legend>
+      <label class="casilla"><input type="radio" name="estado_final" value="borrador" checked> Dejarla reabierta (en borrador), para corregir</label>
+      <label class="casilla"><input type="radio" name="estado_final" value="cerrado"> Dejarla cerrada</label></fieldset>`
+      : ''}
+    <button type="submit" class="boton">Sí, pasar a totales</button>
   </form>
   <p><a class="boton boton-sec" href="${base(mesaId)}">No, volver</a></p>
 </section>`;
@@ -208,6 +231,20 @@ ${matrizSenado(resumen)}
     if (r.estado === 'no_encontrado') return noEncontrada(req, reply);
     if (r.estado === 'conflicto') return responder(reply, pantallaMesa(req, mesaId, { error: r.mensaje }), 409);
     return reply.redirect(`${base(mesaId)}?ok=senado_reabierta`);
+  });
+
+  app.post('/admin/senado/mesa/:id/pasar-a-totales', async (req, reply) => {
+    const mesaId = idDe(req.params.id);
+    const datos = cargarMesaSenado(db, req.captura, mesaId);
+    if (!datos) return noEncontrada(req, reply);
+    if (datos.cab?.modo !== 'sabana') return responder(reply, pantallaMesa(req, mesaId, { error: 'Esta mesa no está en modo sábana.' }), 409);
+    if (req.body?.confirmar !== '1') return responder(reply, pantallaMesa(req, mesaId, { pasar: true }));
+    const version = versionDeBody(req.body);
+    const r = version === null
+      ? { estado: 'error' }
+      : pasarSenadoATotales({ db, captura: req.captura, actor: req.admin, mesaId, version, estadoFinal: req.body?.estado_final === 'cerrado' ? 'cerrado' : 'borrador' });
+    if (r.estado === 'conflicto') return responder(reply, pantallaMesa(req, mesaId, { error: r.mensaje }), 409);
+    return reply.redirect(`${base(mesaId)}?ok=senado_pasada_totales`);
   });
 
   app.post('/admin/senado/mesa/:id/reiniciar', async (req, reply) => {

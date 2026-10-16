@@ -1,6 +1,6 @@
 import { hojaCandidaturas, listarCandidaturas } from '../candidaturas.js';
 import {
-  ErrorCandidato, borrarCandidato, crearCandidato, editarCandidato, leerCandidato, listarCandidatos, moverCandidato, obtenerCandidato,
+  ErrorCandidato, agrupacionesExistentes, borrarCandidato, crearCandidato, editarCandidato, leerCandidato, listarCandidatos, moverCandidato, obtenerCandidato,
 } from '../candidatosSenado.js';
 import { estructuraSenadoBloqueada } from '../recuentoEstado.js';
 import { agruparEnListas } from '../senado.js';
@@ -65,7 +65,7 @@ ${lista.length === 0 ? html`<p>Todavía no hay candidatos. Añádelos en el orde
   });
 
   // ---------- Formulario común ----------
-  function formulario(req, ctx, accion, v, { posicion = '', boton }) {
+  function formulario(req, ctx, accion, v, { posicion = '', boton, actual = null }) {
     const bloq = bloqueada(req);
     const dis = bloq ? crudo(' disabled') : '';
     const partidos = listarCandidaturas(db);
@@ -80,8 +80,10 @@ ${lista.length === 0 ? html`<p>Todavía no hay candidatos. Añádelos en el orde
     ${partidos.map((p) => html`<option value="${p.id}"${p.id === v.candidatura_id ? crudo(' selected') : ''}>${p.siglas ? `${p.siglas} · ` : ''}${p.nombre}</option>`)}
   </select>
   <p class="nota">Con partido, el candidato hereda su color y su logo, y forma lista con los demás de ese partido. Cambiar el partido no recalcula la estadística de bloque ya contada.</p>
-  <label for="agrupacion">Agrupación (solo si no tiene partido; mismo texto = misma lista)</label>
-  <input id="agrupacion" name="agrupacion" type="text" maxlength="60" autocomplete="off" value="${v.agrupacion}">
+  <label for="agrupacion">Agrupación (solo si no tiene partido; elige una existente o escribe una nueva)</label>
+  <input id="agrupacion" name="agrupacion" type="text" maxlength="60" autocomplete="off" list="agrupaciones" value="${v.agrupacion}">
+  <datalist id="agrupaciones">${agrupacionesExistentes(db, { excepto: actual?.id ?? 0 }).map((a) => html`<option value="${a}"></option>`)}</datalist>
+  <p class="nota">Mayúsculas, tildes y espacios sobrantes no cuentan: «Cívica» y « civica » son la misma lista.</p>
   <label for="color">Color propio (solo si no tiene partido)</label>
   <input id="color" name="color" type="color" class="selector-color" value="${v.color}">
   <label for="orden">Posición en la papeleta</label>
@@ -124,7 +126,7 @@ ${lista.length === 0 ? html`<p>Todavía no hay candidatos. Añádelos en el orde
   function pantallaEdicion(req, c, { valores = null, posicion = null, error = null } = {}) {
     const ctx = ctxHoja(req, { error });
     const cuerpo = html`${avisoEstructura(req)}
-${formulario(req, ctx, `/admin/senado/candidatos/${c.id}`, valores ?? valoresActuales(c), { posicion: String(posicion ?? c.orden), boton: 'Guardar cambios' })}
+${formulario(req, ctx, `/admin/senado/candidatos/${c.id}`, valores ?? valoresActuales(c), { posicion: String(posicion ?? c.orden), boton: 'Guardar cambios', actual: c })}
 ${bloqueada(req) ? '' : html`<p><a class="boton boton-sec" href="/admin/senado/candidatos/${c.id}/borrar">Borrar candidato…</a></p>`}
 <p><a href="/admin/senado/candidatos">Volver a los candidatos</a></p>`;
     return paginaAdmin(`Candidato ${c.nombre}`, ctx, cuerpo.texto);

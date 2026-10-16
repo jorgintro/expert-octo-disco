@@ -9,6 +9,7 @@ export const VARIANTES = [
   { id: 'participacion', etiqueta: 'Participación', disponible: true },
   { id: 'ultimo', etiqueta: 'Último corte', disponible: true },
   { id: 'recuento', etiqueta: 'Recuento', disponible: true },
+  { id: 'senado', etiqueta: 'Senado', disponible: true },
 ];
 export const VARIANTE_POR_DEFECTO = 'participacion';
 

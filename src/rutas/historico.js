@@ -10,7 +10,7 @@ const ACCIONES = {
   cambiar_password: 'Cambiar contraseña', seed: 'Carga inicial',
   guardar: 'Guardar borrador', autoguardar: 'Autoguardado', cerrar: 'Cerrar mesa', reabrir: 'Reabrir mesa',
   abrir_recuento: 'Abrir el recuento', cerrar_recuento: 'Cerrar el recuento', borrar: 'Borrar',
-  abrir_senado: 'Abrir el recuento del Senado', cerrar_senado: 'Cerrar el recuento del Senado', reiniciar: 'Reiniciar Senado de la mesa',
+  abrir_senado: 'Abrir el recuento del Senado', cerrar_senado: 'Cerrar el recuento del Senado', reiniciar: 'Reiniciar Senado de la mesa', pasar_a_totales: 'Senado: pasar a totales',
 };
 const etiquetaAccion = (a) => ACCIONES[a] ?? a;
 

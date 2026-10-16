@@ -1,7 +1,7 @@
 // Vistas del recuento del Senado: pestañas Congreso | Senado, pantalla «sábana a sábana» (agente y administrador),
 // formulario de totales (respaldo), lectura, confirmación de cierre, resultados y matriz por mesa (panel).
 import { VACIO } from './participacion.js';
-import { CELDAS, MAX_MARCAS, NOMBRE_MODO, formatoPct } from './senado.js';
+import { CELDAS, MAX_MARCAS, NOMBRE_MODO, TOP_INDIVIDUAL, formatoPct, partidoDe } from './senado.js';
 import { crudo, html, recurso } from './vistas.js';
 
 const SCRIPT_MODULO = html`<script type="module" src="${recurso('/senado.js')}"></script>`;
@@ -239,9 +239,9 @@ const celdaCand = (c) => html`<span class="celda-cand">${insigniaCandidato(c)}<s
 export function resultadosSenado(resumen) {
   const pct = (p) => formatoPct(p);
   return html`<div class="tabla-scroll"><table class="tabla-recuento">
-  <thead><tr><th>Candidato</th><th class="num">Votos</th><th class="num">% válidas</th></tr></thead>
+  <thead><tr><th>Candidato (por votos)</th><th class="num">Votos</th><th class="num">% válidas</th></tr></thead>
   <tbody>
-    ${resumen.candidatos.map((c) => html`<tr class="${claseCand(c.cand)}${c.cand.activo ? '' : ' inactiva'}"><th scope="row">${celdaCand(c.cand)}</th><td class="num">${c.votos}</td><td class="num${c.porcentaje === null ? ' vacia' : ''}">${pct(c.porcentaje)}</td></tr>`)}
+    ${resumen.ranking.map((c, i) => html`<tr class="${claseCand(c.cand)}${c.cand.activo ? '' : ' inactiva'}"><th scope="row"><span class="puesto">${i + 1}</span>${celdaCand(c.cand)}</th><td class="num">${c.votos}</td><td class="num${c.porcentaje === null ? ' vacia' : ''}">${pct(c.porcentaje)}</td></tr>`)}
   </tbody>
   <tfoot>
     <tr><th scope="row">Papeletas válidas</th><td class="num">${resumen.validas}</td><td></td></tr>
@@ -267,11 +267,74 @@ export function matrizSenado(resumen) {
   return html`<div class="tabla-scroll"><table class="tabla-resumen tabla-matriz">
   <thead><tr><th class="fija">Candidato</th><th class="num">Σ<span class="faltan">cerradas</span></th>${resumen.mesas.map((x) => html`<th class="num"><a href="${ficha(x.mesa)}">${x.mesa.codigo}</a><span class="faltan estado-${x.estado}">${ESTADOS_MESA[x.estado]}</span></th>`)}</tr></thead>
   <tbody>
-    ${resumen.candidatos.map((c) => fila(celdaCand(c.cand), claseCand(c.cand), (x) => x.votos.get(c.cand.id), c.votos))}
+    ${resumen.ranking.map((c) => fila(celdaCand(c.cand), claseCand(c.cand), (x) => x.votos.get(c.cand.id), c.votos))}
     ${fila('Válidas', 'neutra', (x) => x.cab?.validas, resumen.validas)}
     ${fila('Blancas', 'neutra', (x) => x.cab?.blancas, resumen.blancas)}
     ${fila('Nulas', 'neutra', (x) => x.cab?.nulas, resumen.nulas)}
   </tbody>
 </table></div>
 <p class="nota">Σ = suma de las mesas <strong>cerradas</strong>. Las cifras en cursiva son de mesas en borrador (no suman). Toca una celda para abrir la ficha de la mesa.</p>`;
+}
+
+// ---------- Pantallazo (variante Senado) ----------
+const filaTotal = (nombre, valor, clase = '') => html`<div class="rec-fila sen-total ${clase}"><span class="rec-siglas">${nombre}</span><span class="rec-votos">${valor}</span></div>`;
+const barra = (pct, clase = '') => html`<svg class="rec-barra ${clase}" viewBox="0 0 100 4" preserveAspectRatio="none" aria-hidden="true"><rect class="fondo" width="100" height="4"/><rect class="relleno" width="${pct ?? 0}" height="4"/></svg>`;
+
+// Clasificación única por votos: los TOP_INDIVIDUAL primeros, uno a uno; el resto en un desplegable (estado en sessionStorage).
+export function tablaSenado(resumen) {
+  const sin = resumen.cerradas === 0;
+  if (resumen.ranking.length === 0) return html`<p class="sin-datos">No hay candidatos cargados.</p>`;
+  const primeros = resumen.ranking.slice(0, TOP_INDIVIDUAL);
+  const resto = resumen.ranking.slice(TOP_INDIVIDUAL);
+  const fila = (c, i) => html`<div class="rec-fila sen-fila ${claseCand(c.cand)}">
+  <span class="sen-pos">${i + 1}</span>
+  <span class="rec-marca">${insigniaCandidato(c.cand)}</span>
+  <span class="sen-nombre"><span class="sen-cand">${c.cand.nombre}</span><span class="sen-partido">${partidoDe(c.cand)}</span></span>
+  <span class="rec-votos">${sin ? VACIO : c.votos}</span>
+  <span class="rec-pct${sin ? ' vacia' : ''}">${sin ? '' : formatoPct(c.porcentaje)}</span>
+  ${barra(sin ? 0 : c.porcentaje)}
+</div>`;
+  return html`<div class="rec-lista sen-lista">
+  ${primeros.map(fila)}
+  ${resto.length > 0
+    ? html`<details class="rec-otros rec-resto" data-persistir="senado:resto">
+    <summary><div class="rec-fila sen-resto-fila gris">
+      <span class="sen-nombre"><span class="sen-cand">Resto (${resto.length})<span class="rec-flecha" aria-hidden="true"></span></span></span>
+    </div></summary>
+    <ol class="rec-pequenas sen-resto" start="${TOP_INDIVIDUAL + 1}">
+      ${resto.map((c, i) => html`<li><span class="rp-pos">${TOP_INDIVIDUAL + i + 1}</span><span class="rp-siglas">${c.cand.nombre}${partidoDe(c.cand) ? html` <span class="rp-partido">${partidoDe(c.cand)}</span>` : ''}</span><span class="rp-votos">${sin ? VACIO : c.votos}</span><span class="rp-pct">${sin ? '' : formatoPct(c.porcentaje)}</span></li>`)}
+    </ol>
+  </details>`
+    : ''}
+  <div class="sen-totales">
+    ${filaTotal('Papeletas válidas', sin ? VACIO : resumen.validas)}
+    ${filaTotal('En blanco', sin ? VACIO : resumen.blancas)}
+    ${filaTotal('Nulas', sin ? VACIO : resumen.nulas)}
+    ${filaTotal('Total de papeletas', sin ? VACIO : resumen.contadas, 'total')}
+  </div>
+</div>
+<p class="rec-mesas">Mesas escrutadas <strong>${resumen.cerradas}/${resumen.totalMesas}</strong></p>`;
+}
+
+// Estadística de bloque: solo mesas cerradas en modo sábana; si no hay datos, no aparece.
+export function bloqueSenado(resumen) {
+  const b = resumen.bloque;
+  if (!b.disponible) return '';
+  const pct = (p) => formatoPct(p);
+  return html`<section class="sen-bloque" aria-label="Estadística de bloque">
+  <h2>Estadística de bloque</h2>
+  <p class="sen-bl-titulo">Papeletas válidas por número de marcas</p>
+  ${b.porMarcas.map((m) => html`<div class="rec-fila sen-bl-fila">
+    <span class="rec-siglas">${m.marcas} marca${m.marcas === 1 ? '' : 's'}</span>
+    <span class="rec-votos">${m.papeletas}</span>
+    <span class="rec-pct">${pct(m.porcentaje)}</span>
+    ${barra(m.porcentaje, 'bloque')}
+  </div>`)}
+  ${b.porcentajeBloque === null
+    ? html`<p class="nota-lienzo">Todas las papeletas tienen una sola marca: no hay voto en bloque que medir.</p>`
+    : html`<p class="sen-bl-titulo">Voto en bloque <small>(papeletas de 2 o 3 marcas)</small></p>
+  <div class="rec-fila sen-bl-fila"><span class="rec-siglas">Todas del mismo partido</span><span class="rec-votos">${b.enBloque}</span><span class="rec-pct">${pct(b.porcentajeBloque)}</span>${barra(b.porcentajeBloque, 'bloque')}</div>
+  <div class="rec-fila sen-bl-fila"><span class="rec-siglas">Voto mixto</span><span class="rec-votos">${b.mixto}</span><span class="rec-pct">${pct(b.porcentajeMixto)}</span>${barra(b.porcentajeMixto, 'bloque')}</div>`}
+  <p class="nota-lienzo">Datos de ${b.mesasSabana}/${b.mesasCerradas} mesas escrutadas${b.mesasTotales > 0 ? ` (${b.mesasTotales} en modo totales, excluidas: no tienen desglose por marcas)` : ''}.</p>
+</section>`;
 }

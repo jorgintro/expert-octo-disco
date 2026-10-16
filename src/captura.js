@@ -389,6 +389,29 @@ export class Captura {
     })();
   }
 
+  // Pasa una mesa del Senado de «sábana» a «totales» CONSERVANDO las cifras (votos por candidato, válidas, blancas y
+  // nulas); la matriz de marcas se descarta (la mesa deja de contar en la estadística de bloque). Solo el administrador
+  // (lo exige el servicio). `estadoFinal`: 'cerrado' solo si estaba cerrada; en otro caso queda en borrador.
+  // Se audita con la foto completa de antes y de después.
+  convertirSenadoATotales({ mesaId, versionEsperada, actor, estadoFinal }) {
+    const db = this.#conexion();
+    return db.transaction(() => {
+      const previa = this.obtenerSenado(mesaId);
+      if (!previa.cab || previa.cab.modo !== 'sabana') return { cambiado: false };
+      if (previa.cab.version !== versionEsperada) throw new ConflictoVersionError(previa.cab.version);
+      const estado = previa.cab.estado === 'cerrado' && estadoFinal === 'cerrado' ? 'cerrado' : 'borrador';
+      const version = previa.cab.version + 1;
+      const ahora = new Date().toISOString();
+      db.prepare("UPDATE senado_mesa SET modo = 'totales', estado = ?, version = ?, introducido_por_tipo = ?, introducido_por_id = ?, actualizado_en = ? WHERE mesa_id = ?")
+        .run(estado, version, actor.tipo, actor.id ?? null, ahora, mesaId);
+      db.prepare('DELETE FROM senado_matriz WHERE mesa_id = ?').run(mesaId);
+      const antes = fotoSenado(previa.cab, previa.votos, previa.matriz);
+      const despues = fotoSenado({ ...previa.cab, modo: 'totales', estado }, previa.votos, new Map());
+      auditar(db, actor, 'pasar_a_totales', 'senado', mesaId, { mesa_id: mesaId, ...antes }, { mesa_id: mesaId, ...despues });
+      return { cambiado: true, version, estado, actualizadoEn: ahora };
+    })();
+  }
+
   // Borra TODO el recuento del Senado de una mesa (para poder cambiar de modo). Solo el administrador; lo exige el
   // servicio. Se audita con la foto de lo que había.
   reiniciarSenado({ mesaId, versionEsperada, actor }) {

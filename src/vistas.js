@@ -78,6 +78,7 @@ const AVISOS = {
   senado_guardado: 'Recuento del Senado guardado.',
   senado_mesa_cerrada: 'Mesa del Senado cerrada.',
   senado_reabierta: 'Mesa del Senado reabierta: vuelve a estar en borrador.',
+  senado_pasada_totales: 'Mesa del Senado pasada a modo totales conservando las cifras.',
   senado_reiniciada: 'Recuento del Senado de la mesa reiniciado.',
   candidato_creado: 'Candidato creado.',
   candidato_guardado: 'Candidato guardado.',
