@@ -75,7 +75,7 @@ try {
     if (salud.json().modo !== 'DEMO') throw new Error(`modo inesperado: ${salud.json().modo}`);
     const entrada = await app.inject('/');
     if (entrada.statusCode !== 200 || !entrada.body.includes('name="pin"')) throw new Error('la pantalla de PIN no se sirve');
-    for (const recurso of ['/agente.js', '/resumen.js', '/recuento.js', '/candidaturas.js', '/senado.js', '/papeleta.js', '/kit.js', '/estilos.css', '/candidaturas.css']) {
+    for (const recurso of ['/agente.js', '/resumen.js', '/recuento.js', '/candidaturas.js', '/senado.js', '/papeleta.js', '/kit.js', '/dulcinea.webp', '/estilos.css', '/candidaturas.css']) {
       if ((await app.inject(recurso)).statusCode !== 200) throw new Error(`falta public${recurso} en la imagen`);
     }
     if ((await app.inject('/agente/kit')).statusCode !== 302) throw new Error('/agente/kit debe exigir PIN');

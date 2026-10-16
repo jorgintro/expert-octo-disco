@@ -31,6 +31,10 @@ function seccion(s) {
 export function cuerpoKit({ kit, clave, colegio, modo, esAdmin }) {
   const pendientes = esAdmin && (kit.fases.some((f) => f.puntos.some((p) => p.verificar)) || kit.secciones.some((s) => s.puntos.some((p) => p.verificar)));
   return html`<div id="kit" data-clave="${clave}" data-colegio="${colegio}" data-modo="${modo}">
+<div class="kit-saludo">
+  <img src="${recurso('/dulcinea.webp')}" width="96" height="96" alt="Dulcinea, la agente electoral, saludando">
+  <p><strong>Soy Dulcinea.</strong> Aquí tienes tu checklist y unos consejos para la jornada. ¡Ánimo!</p>
+</div>
 <nav class="pildoras kit-nav" aria-label="Secciones del kit">
   <a class="pildora" href="#checklist">Checklist</a>
   <a class="pildora" href="#guia">Guía</a>

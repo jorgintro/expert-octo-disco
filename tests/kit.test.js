@@ -174,6 +174,17 @@ test('el agente ve el kit sin ningún punto [VERIFICAR] (ni en el HTML), con ban
   assert.equal(r.headers['cache-control'], 'no-store');
 });
 
+test('Dulcinea saluda en el kit de agente y administrador y su imagen se sirve desde la propia app', async () => {
+  const e = await montar();
+  for (const r of [await getAgente(e.app, '/agente/kit', e.sesionAgente.cookie), await get(e.app, '/admin/kit', e.admin.cookie)]) {
+    assert.match(r.body, /<img src="\/dulcinea\.webp\?v=[^"]+" width="96" height="96" alt="Dulcinea/);
+  }
+  const img = await get(e.app, '/dulcinea.webp');
+  assert.equal(img.statusCode, 200);
+  assert.equal(img.headers['content-type'], 'image/webp');
+  assert.ok(img.rawPayload.length < 60000, 'imagen ligera para el móvil');
+});
+
 test('el administrador ve los puntos pendientes con la etiqueta «Pendiente de verificar»', async () => {
   const e = await montar();
   const r = await get(e.app, '/admin/kit', e.admin.cookie);
