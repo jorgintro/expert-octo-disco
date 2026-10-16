@@ -1,36 +1,16 @@
 import Fastify from 'fastify';
 import fastifyStatic from '@fastify/static';
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import fastifyCookie from '@fastify/cookie';
+import fastifyFormbody from '@fastify/formbody';
 import path from 'node:path';
+import { raiz, version } from './version.js';
+import { pagina } from './vistas.js';
+import rutasAdmin from './rutas/admin.js';
 
-const raiz = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
-const { version } = JSON.parse(readFileSync(path.join(raiz, 'package.json'), 'utf8'));
-
-const escapar = (s) =>
-  String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-
-export function pagina(titulo, cuerpo) {
-  return `<!doctype html>
-<html lang="es">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex, nofollow">
-<title>${escapar(titulo)}</title>
-<link rel="stylesheet" href="/estilos.css">
-</head>
-<body>
-<main class="contenedor">
-${cuerpo}
-</main>
-<footer class="pie">Versión ${escapar(version)}</footer>
-</body>
-</html>`;
-}
-
-export function crearApp(opciones = {}) {
-  const app = Fastify({ logger: opciones.logger ?? false, trustProxy: true });
+export function crearApp({ db, config, logger = false }) {
+  const app = Fastify({ logger, trustProxy: true });
+  app.decorate('db', db);
+  app.decorate('config', config);
 
   app.addHook('onSend', async (req, reply) => {
     reply.header('X-Content-Type-Options', 'nosniff');
@@ -42,6 +22,8 @@ export function crearApp(opciones = {}) {
     );
   });
 
+  app.register(fastifyCookie);
+  app.register(fastifyFormbody);
   app.register(fastifyStatic, { root: path.join(raiz, 'public'), wildcard: false });
 
   app.get('/healthz', async () => ({ estado: 'ok' }));
@@ -55,10 +37,13 @@ export function crearApp(opciones = {}) {
 <p class="subtitulo">Colegio Dulcinea · Alcalá de Henares</p>
 <section class="tarjeta">
   <p><strong>La aplicación está en marcha.</strong></p>
-  <p>El acceso para agentes y administración estará disponible en próximas versiones.</p>
+  <p>El acceso para agentes estará disponible en próximas versiones.</p>
+  <p><a href="/admin/login">Acceso administrador</a></p>
 </section>`
     );
   });
+
+  app.register(rutasAdmin);
 
   return app;
 }
