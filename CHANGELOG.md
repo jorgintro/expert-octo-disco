@@ -2,6 +2,18 @@
 
 Formato de versión 0.X.y. La 1.0.0 solo se publica el día de las elecciones.
 
+## 0.5.1 — Fase 0.5: recuento del Congreso
+
+- **Candidaturas** (panel → Más → *Candidaturas*): alta, edición, orden (número de posición de la Junta Electoral Central), activa/inactiva, destacada, color corporativo y **logo subido desde el panel** (PNG, JPEG o WebP validado por sus primeros bytes). No hay candidaturas fijas en el código. No se borra una candidatura con votos. Configuración compartida por DEMO y REAL. Con el recuento activado, la estructura queda bloqueada.
+- **Apertura del recuento** (`/admin/recuento`): se abre y cierra a mano, con estado propio por modo (en REAL empieza cerrado) y auditoría. En REAL exige la participación informada de todas las mesas activas en el último corte y avisa (sin bloquear) si es antes de las 20:00. En DEMO se puede abrir sin requisitos.
+- **Formulario del agente** (solo con el recuento abierto): «clicker» por candidatura (− resta un voto, + suma uno) con logo y colores, opción «Teclear números», «Otros» desplegable, blancos, nulos y total de votantes, suma en vivo contra el total, «sin rellenar» distinto de 0, «Poner 0 en las vacías», autoguardado del borrador, control de versión (conflicto con opción de recargar o sobrescribir) y borrador local si falla la conexión. «Cerrar mesa» solo si todo es válido y siempre con confirmación (incluye el aviso si el total difiere de la última participación informada).
+- **Validaciones en servidor**: enteros ≥ 0; candidaturas + blancos + nulos = votantes; votantes ≤ censo. Mesa cerrada no editable por el agente; el administrador puede reabrirla. Lo introducido por el administrador no lo edita el agente.
+- **Administrador**: resultados (votos y % sobre válidos, mesas escrutadas n/N, provisional) y matriz candidaturas × mesas con ficha por mesa para introducir, corregir, cerrar y reabrir (marcado «introducido por administrador»); actualización automática.
+- **Pantallazo → Recuento**: destacadas con barras, «Otros», blancos, nulos, total, mesas escrutadas, «Provisional», marca de agua DEMO y franja SIN CONEXIÓN; «Copiar como texto» también para el recuento.
+- **Datos**: nuevas migraciones (`candidatura` en `app.db`; `recuento_mesa`/`recuento_voto` en `app.db` y `demo.db`). Toda la escritura de captura sigue en `src/captura.js`; en DEMO el recuento va solo a `demo.db`. Auditoría de cada cambio (solo diferencias; el autoguardado no aparece en el histórico salvo `?auto=1`).
+- Ficheros estáticos con `Cache-Control: no-cache` + ETag y `?v=<versión>` en las URLs de CSS y JS.
+- La comprobación de arranque del build verifica además los nuevos recursos, rutas protegidas y el aislamiento del recuento demo.
+
 ## 0.4.1 — Fase 0.4: panel resumen y vista pantallazo
 
 - **Panel resumen** (`/admin/resumen`): tabla mesa × corte con acumulado, parcial y % sobre censo, fila de totales, mesas informadas por corte (`4/6`) y mesas pendientes del último corte. Se actualiza sola cada 5 s con la hora de la última actualización. Cada celda lleva a la ficha de edición.
