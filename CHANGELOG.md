@@ -2,6 +2,15 @@
 
 Formato de versión 0.X.y. La 1.0.0 solo se publica el día de las elecciones.
 
+## 0.7.1 — Fase 0.7: kit del agente electoral
+
+- **Kit del agente electoral** (apoderado/interventor, un único kit) en `/agente/kit` y `/admin/kit`: solo con sesión (PIN o administrador), con banner DEMO/REAL. Enlace «Kit» en la cabecera del agente y en el menú y la portada del administrador. No toca los datos de captura ni la base.
+- **Checklist por fases de la jornada** (el día antes, antes de abrir, constitución, votación, cierre, escrutinio, después): cada punto es marcable y guarda la hora. El estado vive en el dispositivo (`localStorage` con `try/catch`, clave ligada al agente; sin él la página funciona pero no recuerda y lo avisa). «Copiar como texto» (hecho/pendiente con hora, para WhatsApp; marca DEMO) y «Reiniciar» con confirmación.
+- **Guía de consejos** en secciones plegables: qué vigilar, qué anotar, incidencias habituales, cómo usar la app y consejos prácticos.
+- **Contenido editable sin tocar código** en `content/checklist.json` y `content/guia.json`, validado al arrancar (ids, textos, claves, rol «solo»): un archivo mal formado impide el arranque con un mensaje claro. Entra en la imagen Docker.
+- **Contenido pendiente de verificar**: los puntos con `[VERIFICAR]` (y `"verificar": true`, obligatorios a la vez) los filtra el servidor: el administrador los ve con la etiqueta «Pendiente de verificar»; los agentes no los reciben ni en el HTML. Se publican quitando la marca en el archivo. El contenido es un borrador: no cita normas.
+- Hoja de estilos de impresión (sin PDF ni Word). Hoja de ruta actualizada en SPEC.md §10 y CLAUDE.md: 0.7.x kit, 0.8.x blog con Bludit, 0.9.x endurecimiento y simulacro.
+
 ## 0.6.2 — Fase 0.6, segunda mitad: pantallazo del Senado
 
 - **Orden por votos**: en el pantallazo y en el panel `/admin/senado`, los candidatos van en una sola clasificación de mayor a menor número de votos (desempate: orden de la papeleta), recalculada en cada refresco; la matriz candidato × mesa conserva ese orden.

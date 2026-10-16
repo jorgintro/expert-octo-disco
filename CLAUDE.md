@@ -6,6 +6,8 @@ Lee primero `SPEC.md`: es la fuente de verdad de requisitos, modelo de datos y h
 
 Miniaplicación web mobile-first, autoalojada, para que los agentes de un colegio electoral (piloto: Colegio Dulcinea, Alcalá de Henares, 6 mesas) registren la **participación acumulada por mesa** en cortes horarios y, desde las 20:00, el **recuento**. El administrador (Jefe de Colegio) gestiona todo y hace pantallazos de las vistas resumen para enviarlos por WhatsApp. Elecciones generales: Congreso (0.5.y) y Senado (0.6.y).
 
+Hoja de ruta tras el Senado: **0.7.x** kit del agente electoral (checklist + guía, dentro de la app); **0.8.x** blog con Bludit en un stack separado; **0.9.x** endurecimiento y simulacro (obligatorio: no se recorta ni se retrasa por el blog); **1.0.0** solo el día de las elecciones. Detalle en `SPEC.md` §10.
+
 ## Idioma
 
 - Interfaz, textos de error, mensajes de commit y documentación: **español de España**.
@@ -49,6 +51,9 @@ Miniaplicación web mobile-first, autoalojada, para que los agentes de un colegi
 - Todas las horas se guardan en UTC y se muestran en `Europe/Madrid`. La hora de actualización debe ser visible en la vista pantallazo.
 - El recuento lo activa el administrador a mano; **no dependas del reloj para bloquear el recuento**. El modo DEMO/REAL **sí** usa el reloj (`ELECTION_DATE`) y puede forzarse a mano.
 - **Nunca escribir en datos reales en modo DEMO.** Las tablas de captura (participación, recuento del Congreso y del Senado, y su auditoría) se tocan solo a través de la capa de captura (`src/captura.js`), que el gestor de datos ata al destino según el modo (DEMO → `data/demo.db`, REAL → `data/app.db`). Las rutas no abren conexiones ni escriben SQL sobre esas tablas. La configuración y su auditoría van siempre a `app.db`. `demo.db` solo contiene captura de prueba, se descarta al pasar a REAL y no se respalda.
+
+- El **contenido del kit** (`content/`) no cita artículos ni normas sin verificar: lo que dependa de una norma o de instrucciones del partido va marcado `[VERIFICAR]` y solo lo ve el administrador hasta que se quite la marca.
+- El estado del checklist vive en el dispositivo; el kit nunca escribe en los datos de captura.
 
 ## Seguridad
 

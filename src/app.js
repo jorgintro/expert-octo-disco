@@ -7,6 +7,7 @@ import { GestorDatos } from './datos.js';
 import { raiz, version } from './version.js';
 import { bannerModo, pieModo } from './vistas.js';
 import { confiarEnProxy } from './proxy.js';
+import { cargarKit, directorioContenido } from './kit.js';
 import rutasAdmin from './rutas/admin.js';
 import rutasAgente from './rutas/agente.js';
 import rutasLogos from './rutas/logos.js';
@@ -17,6 +18,8 @@ export function crearApp({ db, config, logger = false, reloj = Date.now }) {
   app.decorate('config', config);
   const datos = new GestorDatos({ db, dataDir: config.dataDir, fechaElecciones: config.fechaElecciones, reloj });
   app.decorate('datos', datos);
+  // Contenido del kit del agente: se valida aquí, así que un archivo mal formado impide arrancar.
+  app.decorate('kit', cargarKit(directorioContenido(config)));
   app.decorateRequest('modo', null);
   app.decorateRequest('captura', null);
   app.addHook('onClose', async () => datos.cerrar());

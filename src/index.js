@@ -16,7 +16,13 @@ const db = abrirDb(path.join(config.dataDir, 'app.db'));
 migrarApp(db);
 await sembrar(db, config);
 
-const app = crearApp({ db, config, logger: true });
+let app;
+try {
+  app = crearApp({ db, config, logger: true });
+} catch (err) {
+  console.error(err.message);
+  process.exit(1);
+}
 app.addHook('onClose', async () => db.close());
 
 try {

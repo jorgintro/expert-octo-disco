@@ -23,6 +23,7 @@ COPY src ./src
 COPY migrations ./migrations
 COPY scripts ./scripts
 COPY public ./public
+COPY content ./content
 
 # El usuario "node" de la imagen oficial tiene uid 1000.
 RUN mkdir -p /app/data && chown -R node:node /app/data

@@ -402,3 +402,38 @@ details.rec-otros[open] .rec-flecha { transform: rotate(180deg); }
 .tabla-recuento .puesto { float: left; }
 .sen-total.total .rec-siglas { grid-column: auto; }
 .sen-resto-fila { grid-template-columns: minmax(0, 1fr); }
+
+/* Kit del agente electoral */
+.kit-enlace { display: inline-flex; align-items: center; min-height: 2.75rem; padding: 0 0.5rem; font-weight: 600; }
+.cabecera-agente .agente-nombre { flex: 1; min-width: 0; }
+.kit-nav { margin-top: 0.75rem; }
+.kit-titulo { margin: 1rem 0 0.25rem; font-size: 1.3rem; }
+.kit-total { margin: 0.25rem 0 0.75rem; }
+.kit-fase { margin-bottom: 0.75rem; }
+.kit-fase h2 { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; margin: 0 0 0.5rem; font-size: 1.15rem; }
+.kit-progreso { flex: none; font-size: 0.9rem; font-weight: 600; color: var(--suave); font-variant-numeric: tabular-nums; }
+.kit-lista, .kit-guia { list-style: none; margin: 0; padding: 0; }
+.kit-punto { padding: 0.15rem 0; border-top: 1px solid var(--borde); }
+.kit-punto:first-child { border-top: 0; }
+.kit-casilla { align-items: flex-start; gap: 0.75rem; padding: 0.4rem 0; font-size: 1rem; line-height: 1.35; }
+.kit-casilla input { flex: none; margin: 0.1rem 0 0; }
+.kit-texto { min-width: 0; overflow-wrap: anywhere; }
+.kit-hora { display: block; padding: 0 0 0.3rem 2.25rem; font-size: 0.85rem; color: #2e7d32; font-weight: 600; }
+.kit-hora:empty { display: none; }
+.kit-etiqueta { display: inline-block; margin-left: 0.25rem; padding: 0 0.4rem; font-size: 0.75rem; font-weight: 700; border-radius: 0.3rem; color: #fff; background: #455a64; white-space: nowrap; }
+.kit-etiqueta.pendiente { background: #e65100; }
+.por-verificar { background: #fff8e1; }
+.aviso-verificar { padding: 0.6rem 0.8rem; border: 1px solid #e65100; border-radius: 0.5rem; background: #fff3e0; font-size: 0.9rem; }
+.kit-botones { display: grid; gap: 0.5rem; margin: 0.75rem 0; }
+.kit-confirmar { margin-bottom: 0.75rem; border-color: #b3261e; }
+.kit-texto-copia textarea { width: 100%; font: inherit; font-size: 0.85rem; }
+.kit-seccion { margin-bottom: 0.5rem; background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 0.75rem; padding: 0 1rem; }
+.kit-seccion summary { min-height: 2.75rem; display: flex; align-items: center; cursor: pointer; font-weight: 700; }
+.kit-guia { padding: 0 0 0.75rem; }
+.kit-guia li { padding: 0.35rem 0; font-size: 1rem; line-height: 1.4; border-top: 1px solid var(--borde); }
+.kit-guia li:first-child { border-top: 0; }
+@media print {
+  .nav, .cabecera-agente, .kit-nav, .kit-botones, .kit-confirmar, .kit-texto-copia, .pie, #banner-modo, .barra-real { display: none !important; }
+  body { background: #fff; font-size: 11pt; }
+  .tarjeta, .kit-seccion { border: 0; break-inside: avoid; }
+}
