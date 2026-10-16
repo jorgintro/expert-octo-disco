@@ -1,5 +1,5 @@
 import argon2 from 'argon2';
-import { timingSafeEqual } from 'node:crypto';
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { auditar } from '../auditoria.js';
 import { estaBloqueada, limpiarFallos, registrarFallo } from '../limiteIntentos.js';
 import { borrarSesion, borrarSesionesDeActor, buscarSesion, crearSesion, DURACION_SESION_MS } from '../sesiones.js';
@@ -17,12 +17,13 @@ const textoSeguro = (a, b) => {
   return x.length === y.length && timingSafeEqual(x, y);
 };
 
-function formLogin({ error, usuario = '' } = {}) {
+function formLogin({ csrf, error, usuario = '' } = {}) {
   return pagina(
     'Acceso administrador',
     html`<h1>Acceso administrador</h1>
 ${error ? html`<p class="error" role="alert">${error}</p>` : ''}
 <form method="post" action="/admin/login" class="tarjeta formulario">
+  <input type="hidden" name="_csrf" value="${csrf}">
   <label for="usuario">Usuario</label>
   <input id="usuario" name="usuario" type="text" autocomplete="username" autocapitalize="none" required value="${usuario}">
   <label for="contrasena">Contraseña</label>
@@ -44,17 +45,39 @@ export default async function rutasAdmin(app) {
       maxAge: DURACION_SESION_MS / 1000,
     });
 
+  // CSRF del login (aún no hay sesión): el token del formulario es el HMAC del valor de una
+  // cookie HttpOnly. Un sitio externo no puede calcularlo sin SESSION_SECRET.
+  const firmarCsrfLogin = (valor) => createHmac('sha256', config.sessionSecret).update(`login:${valor}`).digest('base64url');
+  const emitirCsrfLogin = (reply) => {
+    const valor = randomBytes(24).toString('base64url');
+    reply.setCookie('csrf_login', valor, {
+      httpOnly: true,
+      secure: config.cookieSegura,
+      sameSite: 'lax',
+      path: '/admin/login',
+      maxAge: 3600,
+    });
+    return firmarCsrfLogin(valor);
+  };
+  const csrfLoginValido = (req) => {
+    const valor = req.cookies.csrf_login;
+    return typeof valor === 'string' && valor !== '' && textoSeguro(req.body?._csrf ?? '', firmarCsrfLogin(valor));
+  };
+  const loginHtml = (reply, opciones, codigo = 200) => {
+    reply.header('Cache-Control', 'no-store');
+    return responder(reply, formLogin({ ...opciones, csrf: emitirCsrfLogin(reply) }), codigo);
+  };
+
   // ---- Públicas ----
-  app.get('/admin/login', async (req, reply) => responder(reply, formLogin()));
+  app.get('/admin/login', async (req, reply) => loginHtml(reply, {}));
 
   app.post('/admin/login', async (req, reply) => {
+    if (!csrfLoginValido(req)) {
+      return loginHtml(reply, { error: 'La página ha caducado. Vuelve a intentarlo.' }, 403);
+    }
     const ip = req.ip;
     if (estaBloqueada(db, ip)) {
-      return responder(
-        reply,
-        formLogin({ error: 'Demasiados intentos fallidos. Espera unos minutos antes de volver a probar.' }),
-        429
-      );
+      return loginHtml(reply, { error: 'Demasiados intentos fallidos. Espera unos minutos antes de volver a probar.' }, 429);
     }
     const usuario = String(req.body?.usuario ?? '').trim().slice(0, 100);
     const contrasena = String(req.body?.contrasena ?? '');
@@ -72,7 +95,7 @@ export default async function rutasAdmin(app) {
 
     if (!correcto) {
       registrarFallo(db, ip);
-      return responder(reply, formLogin({ error: 'Usuario o contraseña incorrectos.', usuario }), 401);
+      return loginHtml(reply, { error: 'Usuario o contraseña incorrectos.', usuario }, 401);
     }
 
     limpiarFallos(db, ip);
@@ -80,6 +103,7 @@ export default async function rutasAdmin(app) {
     const { token } = crearSesion(db, config.sessionSecret, 'admin', admin.id);
     auditar(db, { tipo: 'admin', id: admin.id }, 'login', 'admin', admin.id);
     cookieSesion(reply, token);
+    reply.clearCookie('csrf_login', { path: '/admin/login' });
     return reply.redirect('/admin');
   });
 

@@ -22,7 +22,14 @@ export function cargarConfig(env = process.env) {
     adminUser: (env.ADMIN_USER ?? '').trim(),
     adminPasswordInitial: secreto('ADMIN_PASSWORD_INITIAL', 10),
     cookieSegura: env.COOKIE_SECURE !== 'false',
+    trustProxy: 2,
   };
+
+  // Saltos de proxy de confianza entre la app y el cliente (ver README, "IP real del cliente").
+  // 2 = Cloudflare + Nginx Proxy Manager; 1 = solo NPM; 0 = acceso directo sin proxy.
+  const saltos = (env.TRUST_PROXY ?? '2').trim();
+  if (/^\d{1,2}$/.test(saltos)) config.trustProxy = Number(saltos);
+  else errores.push('TRUST_PROXY debe ser un número entero de saltos de proxy (0, 1, 2...)');
   if (!config.adminUser) errores.push('ADMIN_USER no está definida');
 
   if (errores.length) {

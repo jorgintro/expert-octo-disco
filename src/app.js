@@ -5,10 +5,11 @@ import fastifyFormbody from '@fastify/formbody';
 import path from 'node:path';
 import { raiz, version } from './version.js';
 import { pagina } from './vistas.js';
+import { confiarEnProxy } from './proxy.js';
 import rutasAdmin from './rutas/admin.js';
 
 export function crearApp({ db, config, logger = false }) {
-  const app = Fastify({ logger, trustProxy: true });
+  const app = Fastify({ logger, trustProxy: confiarEnProxy(config.trustProxy) });
   app.decorate('db', db);
   app.decorate('config', config);
 

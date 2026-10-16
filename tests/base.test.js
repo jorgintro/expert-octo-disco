@@ -7,6 +7,7 @@ import { abrirDb, migrar } from '../src/db.js';
 import { sembrar } from '../src/seed.js';
 import { cargarConfig } from '../src/config.js';
 import { generarPin, hmacPin } from '../src/pin.js';
+import { confiarEnProxy, esPrivada } from '../src/proxy.js';
 import { CONFIG } from './ayuda.js';
 
 const nuevaDb = () => {
@@ -77,6 +78,35 @@ test('la configuración rechaza secretos ausentes, de ejemplo o cortos', () => {
   assert.throws(() => cargarConfig({ ...ok, SESSION_SECRET: 'cambiame' }), /SESSION_SECRET/);
   assert.throws(() => cargarConfig({ ...ok, PIN_HMAC_SECRET: 'corto' }), /PIN_HMAC_SECRET/);
   assert.throws(() => cargarConfig({ ...ok, ADMIN_PASSWORD_INITIAL: 'corta' }), /ADMIN_PASSWORD_INITIAL/);
+});
+
+test('TRUST_PROXY: 2 por defecto, configurable y validado', () => {
+  const ok = {
+    SESSION_SECRET: 'a'.repeat(32),
+    PIN_HMAC_SECRET: 'b'.repeat(32),
+    ADMIN_USER: 'admin',
+    ADMIN_PASSWORD_INITIAL: 'una-contraseña-larga',
+  };
+  assert.equal(cargarConfig(ok).trustProxy, 2);
+  assert.equal(cargarConfig({ ...ok, TRUST_PROXY: '1' }).trustProxy, 1);
+  assert.equal(cargarConfig({ ...ok, TRUST_PROXY: '0' }).trustProxy, 0);
+  assert.throws(() => cargarConfig({ ...ok, TRUST_PROXY: 'true' }), /TRUST_PROXY/);
+  assert.throws(() => cargarConfig({ ...ok, TRUST_PROXY: '-1' }), /TRUST_PROXY/);
+});
+
+test('confiarEnProxy: par inmediato privado y N saltos; nunca confía en un par público', () => {
+  assert.equal(confiarEnProxy(0), false);
+  for (const ip of ['172.18.0.2', '10.1.2.3', '192.168.1.5', '127.0.0.1', '::1', '::ffff:172.18.0.2', 'fd12::1']) {
+    assert.equal(esPrivada(ip), true, ip);
+  }
+  for (const ip of ['203.0.113.9', '172.32.0.1', '8.8.8.8', '2001:db8::1', 'no-es-ip', '']) {
+    assert.equal(esPrivada(ip), false, ip);
+  }
+  const confia = confiarEnProxy(2);
+  assert.equal(confia('172.18.0.2', 0), true);
+  assert.equal(confia('172.70.1.1', 1), true);
+  assert.equal(confia('203.0.113.9', 2), false);
+  assert.equal(confia('203.0.113.50', 0), false, 'un par público directo no es de confianza');
 });
 
 test('el PIN tiene 6 dígitos, el HMAC es determinista y no contiene el PIN', () => {

@@ -1,6 +1,7 @@
 services:
   tiroriro:
     build: .
+    image: tiroriro:local
     container_name: tiroriro
     restart: unless-stopped
     env_file: .env
