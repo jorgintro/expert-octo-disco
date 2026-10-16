@@ -1,0 +1,19 @@
+{
+  "name": "tiroriro",
+  "version": "0.1.1",
+  "description": "Participación y recuento para colegio electoral (piloto Colegio Dulcinea)",
+  "private": true,
+  "type": "module",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test tests/*.test.js"
+  },
+  "dependencies": {
+    "@fastify/static": "10.1.6",
+    "fastify": "5.12.7"
+  }
+}
