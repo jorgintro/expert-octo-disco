@@ -45,15 +45,28 @@ export function pagina(titulo, cuerpo) {
 <link rel="stylesheet" href="/estilos.css">
 </head>
 <body>
+<!--MODO_BANNER-->
 <main class="contenedor">
 ${cuerpo}
 </main>
-<footer class="pie">Versión ${esc(version)}</footer>
+<footer class="pie">Versión ${esc(version)}<!--MODO_PIE--></footer>
 </body>
 </html>`;
 }
 
+// Marcadores que app.js sustituye en cada respuesta HTML según el modo de trabajo, de modo que
+// TODAS las pantallas (administración, agente, pantallazo...) muestran el modo sin tocar cada ruta.
+export function bannerModo(modo) {
+  return modo === 'DEMO'
+    ? '<div class="banner-demo" role="status">MODO DEMO - datos de prueba</div>'
+    : '<div class="barra-real" aria-hidden="true"></div>';
+}
+export const pieModo = (modo) => (modo === 'DEMO' ? ' · <strong>MODO DEMO</strong>' : ' · Modo REAL');
+
 const AVISOS = {
+  modo_cambiado: 'Modo de trabajo cambiado.',
+  demo_reiniciada: 'Demo reiniciada: se han borrado los datos de prueba.',
+  desbloqueada: 'IP desbloqueada.',
   creada: 'Mesa creada.',
   guardada: 'Cambios guardados.',
   baja: 'Mesa dada de baja.',
@@ -74,6 +87,8 @@ export function paginaAdmin(titulo, { csrf, aviso: textoAviso, error } = {}, cue
   <a href="/admin">Inicio</a>
   <a href="/admin/mesas">Mesas</a>
   <a href="/admin/agentes">Agentes</a>
+  <a href="/admin/modo">Modo</a>
+  <a href="/admin/bloqueos">Bloqueos</a>
   <a href="/admin/password">Contraseña</a>
   <form method="post" action="/admin/logout">
     <input type="hidden" name="_csrf" value="${csrf}">

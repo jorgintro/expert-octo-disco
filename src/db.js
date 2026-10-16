@@ -12,20 +12,35 @@ export function abrirDb(ruta) {
   return db;
 }
 
-// Aplica en orden las migraciones SQL pendientes de migrations/.
-export function migrar(db, dir = path.join(raiz, 'migrations')) {
-  db.exec(`CREATE TABLE IF NOT EXISTS migracion (
+export const DIR_MIGRACIONES = path.join(raiz, 'migrations');
+export const DIR_CAPTURA = path.join(DIR_MIGRACIONES, 'captura');
+
+// Aplica en orden las migraciones SQL pendientes de `dir`, anotándolas en `tabla`.
+export function migrar(db, dir = DIR_MIGRACIONES, tabla = 'migracion') {
+  if (!/^[a-z_]+$/.test(tabla)) throw new Error('Nombre de tabla de migraciones no válido');
+  db.exec(`CREATE TABLE IF NOT EXISTS ${tabla} (
     nombre TEXT PRIMARY KEY,
     aplicada_en TEXT NOT NULL
   )`);
-  const aplicadas = new Set(db.prepare('SELECT nombre FROM migracion').all().map((r) => r.nombre));
+  const aplicadas = new Set(db.prepare(`SELECT nombre FROM ${tabla}`).all().map((r) => r.nombre));
   const ficheros = readdirSync(dir).filter((f) => f.endsWith('.sql')).sort();
   for (const fichero of ficheros) {
     if (aplicadas.has(fichero)) continue;
     const sql = readFileSync(path.join(dir, fichero), 'utf8');
     db.transaction(() => {
       db.exec(sql);
-      db.prepare('INSERT INTO migracion (nombre, aplicada_en) VALUES (?, ?)').run(fichero, new Date().toISOString());
+      db.prepare(`INSERT INTO ${tabla} (nombre, aplicada_en) VALUES (?, ?)`).run(fichero, new Date().toISOString());
     })();
   }
+}
+
+// app.db: configuración + captura real.
+export function migrarApp(db) {
+  migrar(db, DIR_MIGRACIONES, 'migracion');
+  migrar(db, DIR_CAPTURA, 'migracion_captura');
+}
+
+// demo.db: solo las tablas de captura.
+export function migrarDemo(db) {
+  migrar(db, DIR_CAPTURA, 'migracion_captura');
 }

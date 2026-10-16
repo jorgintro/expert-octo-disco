@@ -5,7 +5,7 @@
 // Uso: node scripts/comprobar-arranque.js [--exigir-cli]
 //   --exigir-cli  falla si no está el binario sqlite3 (necesario para las copias de seguridad).
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -48,15 +48,23 @@ try {
     if (await argon2.verify(hash, 'otra-cosa')) throw new Error('verificó una contraseña incorrecta');
   });
 
-  await comprobar('aplicación: migraciones, seed y /healthz', async () => {
-    const { abrirDb, migrar } = await import('../src/db.js');
+  await comprobar('zona horaria Europe/Madrid (ICU)', async () => {
+    const { fechaMadrid } = await import('../src/tiempo.js');
+    // 23:00Z del 28-nov es ya el 29-nov en Madrid (CET). Si ICU no tuviera zonas, fallaría.
+    if (fechaMadrid(Date.UTC(2026, 10, 28, 23, 0, 0)) !== '2026-11-29') throw new Error('la zona Europe/Madrid no funciona');
+    if (fechaMadrid(Date.UTC(2026, 10, 28, 22, 59, 59)) !== '2026-11-28') throw new Error('la zona Europe/Madrid no funciona');
+  });
+
+  await comprobar('aplicación: migraciones, seed, modo DEMO/REAL y /healthz', async () => {
+    const { abrirDb, migrarApp } = await import('../src/db.js');
     const { sembrar } = await import('../src/seed.js');
     const { crearApp } = await import('../src/app.js');
     const db = abrirDb(path.join(dir, 'app.db'));
-    migrar(db);
+    migrarApp(db);
     const config = {
       puerto: 0, dataDir: dir, sessionSecret: 's'.repeat(32), pinHmacSecret: 'p'.repeat(32),
       adminUser: 'admin', adminPasswordInitial: 'contraseña-de-prueba', cookieSegura: true, trustProxy: 0,
+      fechaElecciones: '2999-01-01', // futura: el modo automático es DEMO
     };
     await sembrar(db, config);
     const mesas = db.prepare('SELECT COUNT(*) AS n FROM mesa').get().n;
@@ -64,9 +72,18 @@ try {
     const app = crearApp({ db, config });
     const salud = await app.inject('/healthz');
     if (salud.statusCode !== 200) throw new Error(`/healthz respondió ${salud.statusCode}`);
+    if (salud.json().modo !== 'DEMO') throw new Error(`modo inesperado: ${salud.json().modo}`);
+    if (!existsSync(path.join(dir, 'demo.db'))) throw new Error('no se creó demo.db en modo DEMO');
+    // Captura de prueba: debe ir a demo.db y no tocar app.db
+    const captura = app.datos.captura();
+    captura.guardarParticipacion({ mesaId: 1, corteId: 1, votantes: 1, actor: { tipo: 'admin', id: 1 } });
+    if (db.prepare('SELECT COUNT(*) AS n FROM participacion').get().n !== 0) throw new Error('la captura demo llegó a app.db');
+    // Al pasar a REAL la demo se descarta
+    app.datos.cambiarModo('REAL', { tipo: 'sistema', id: null });
+    if (existsSync(path.join(dir, 'demo.db'))) throw new Error('demo.db no se eliminó al pasar a REAL');
     await app.close();
     db.close();
-    return '6 mesas sembradas';
+    return '6 mesas sembradas; DEMO -> REAL correcto';
   });
 
   await comprobar('cliente sqlite3 (copias de seguridad)', () => {

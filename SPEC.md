@@ -50,7 +50,7 @@ Total de censo inicial: 4.181 electores. Son 6 mesas. Los datos de cada mesa se 
 
 Reglas del acceso por PIN:
 - El administrador genera, regenera y revoca PIN desde el panel. El PIN se muestra en claro **solo en el momento de generarse** (para dárselo al agente). En base de datos no se guarda en claro: se guarda un HMAC con una clave secreta del servidor (determinista, para poder buscar al agente por PIN) con restricción de unicidad.
-- Límite de intentos por IP y bloqueo temporal ante fallos repetidos (por ejemplo, 5 fallos y 5 minutos de bloqueo).
+- Límite de intentos por IP y bloqueo temporal ante fallos repetidos, con **contadores separados por ámbito**: contraseña de administrador (login, pantalla de modo, cambio de contraseña: 5 fallos en 15 minutos, bloqueo de 5 minutos) y PIN de agentes (más permisivo, 15 fallos en 5 minutos, bloqueo de 5 minutos), porque los agentes de un colegio comparten IP pública. Un fallo de administrador nunca bloquea a los agentes ni al revés. El administrador puede **desbloquear una IP** desde el panel (Bloqueos).
 - Sesión por cookie `HttpOnly`, `Secure`, `SameSite=Lax`, con caducidad larga durante la jornada (por ejemplo, 14 h) para que el agente no tenga que reintroducir el PIN.
 - Un agente puede estar asignado a una o varias mesas; una mesa puede tener varios agentes.
 - Revocar un PIN invalida sus sesiones activas.
@@ -59,6 +59,8 @@ Reglas del acceso por PIN:
 ## 5. Modelo de datos (SQLite)
 
 Todas las fechas en UTC (ISO 8601), mostradas en `Europe/Madrid`.
+
+Hay dos bases SQLite (ver la sección 9 bis): **`app.db`** (configuración y captura real, con su auditoría) y **`demo.db`** (solo captura de prueba, su auditoría incluida). Las tablas de captura (`participacion`, y `recuento_mesa` / `recuento_voto` en la 0.5) existen en ambas con el mismo esquema y **sin claves foráneas** a `mesa`, `corte` ni `candidatura` (en `demo.db` esas tablas no existen): se referencian por id y la aplicación valida su existencia contra `app.db`.
 
 - **colegio**: `id`, `nombre`, `municipio`.
 - **mesa**: `id`, `colegio_id`, `distrito`, `seccion`, `letra`, `codigo` (ej. `4-2-A`, único por colegio), `censo` (entero ≥ 0), `activa`.
@@ -79,8 +81,8 @@ Todas las fechas en UTC (ISO 8601), mostradas en `Europe/Madrid`.
 1. `votantes_acumulados` es entero ≥ 0 y ≤ `censo` de la mesa.
 2. El acumulado no puede ser menor que el del corte anterior ya introducido, ni mayor que el del corte posterior ya introducido.
 3. Se calcula el parcial de cada tramo (acumulado del corte menos el del corte anterior) y el porcentaje sobre censo.
-4. Si el dato pasa de golpe un umbral de sospecha (por ejemplo, un salto de más del 25 % del censo en un tramo), la app pide confirmación explícita, sin bloquear.
-5. Un agente puede corregir su propio dato; el cambio queda en auditoría.
+4. Si el dato pasa de golpe un umbral de sospecha (un salto de más del 25 % del censo en un tramo, calculado sobre el parcial respecto al último corte anterior ya introducido, o respecto a 0 si no hay ninguno), la app pide confirmación explícita en dos pasos, sin bloquear. Vale también para el administrador.
+5. Cualquier agente asignado a la mesa puede corregir las celdas de su mesa, **salvo las introducidas por el administrador**, que quedan bloqueadas para los agentes con un mensaje claro. Los agentes corrigen, no vacían. El administrador puede introducir, corregir y **vaciar** cualquier celda (el vaciado se audita). Todo cambio queda en auditoría.
 
 **Recuento del Congreso (por mesa)**
 1. Votos por candidatura, blancos y nulos: enteros ≥ 0.
@@ -100,7 +102,7 @@ Todas las fechas en UTC (ISO 8601), mostradas en `Europe/Madrid`.
 
 **Agente**
 - Cabecera con colegio y mesa asignada (con selector si tiene varias).
-- Tarjeta del **corte actual** (el más reciente que corresponda por hora, con posibilidad de elegir otro): campo numérico grande y botón "Guardar".
+- Tarjeta del **corte actual** (el más reciente cuya hora ya pasó, o el primero si es antes de las 10:00; se puede elegir cualquier otro). En REAL, si el corte elegido aún no ha llegado, se pide confirmación; en DEMO no. Campo numérico grande y botón "Guardar".
 - Histórico de cortes de la mesa con acumulado, parcial y % sobre censo.
 - Cuando el administrador abre el recuento: formulario del Congreso (una fila por candidatura, más blancos y nulos), con total y comprobación en vivo.
 
@@ -120,6 +122,7 @@ Todas las fechas en UTC (ISO 8601), mostradas en `Europe/Madrid`.
 - Título con colegio, tipo de elección y **hora de actualización** bien visible.
 - Variantes seleccionables: **Participación** (tabla mesa × corte, total colegio y %), **Último corte** (compacta), **Recuento** (candidaturas destacadas, mesas escrutadas, blancos, nulos y total).
 - Marca de estado: "Provisional" mientras haya mesas pendientes.
+- **Marca de agua "DEMO"**: en modo DEMO, toda captura de esta vista llevará una marca de agua "DEMO" bien visible (diagonal, sobre el contenido y dentro de la propia imagen de la pantalla), para que un pantallazo de datos de prueba no pueda confundirse con datos reales en el grupo de WhatsApp. En REAL no hay marca de agua. (Requisito para la 0.4.y.)
 
 ## 8. Requisitos no funcionales
 
@@ -136,10 +139,35 @@ Todas las fechas en UTC (ISO 8601), mostradas en `Europe/Madrid`.
 - Servidor: PC con Debian, Docker y **Nginx Proxy Manager**; dominio `tiroriro.jdiaz.bid` gestionado en Cloudflare.
 - Un contenedor para la app, orquestado con `docker-compose.yml`, con la base de datos en un volumen persistente (`./data`).
 - La app escucha en un puerto interno sin publicarlo hacia fuera; Nginx Proxy Manager hace el proxy inverso con certificado, hacia el contenedor por la red de Docker compartida (o el puerto enlazado a `127.0.0.1`).
-- Variables de entorno: `PORT`, `DATA_DIR`, `SESSION_SECRET`, `PIN_HMAC_SECRET`, `ADMIN_USER`, `ADMIN_PASSWORD_INITIAL`, `TZ=Europe/Madrid`, `TRUST_PROXY` (saltos de proxy: 2 con Cloudflare + Nginx Proxy Manager) y `COOKIE_SECURE`.
+- Variables de entorno: `PORT`, `DATA_DIR`, `SESSION_SECRET`, `PIN_HMAC_SECRET`, `ADMIN_USER`, `ADMIN_PASSWORD_INITIAL`, `TZ=Europe/Madrid`, `ELECTION_DATE` (AAAA-MM-DD, por defecto `2026-11-29`), `TRUST_PROXY` (saltos de proxy: 2 con Cloudflare + Nginx Proxy Manager) y `COOKIE_SECURE`.
 - Runtime: **Node.js 22 (LTS)**. Imagen base `node:22-bookworm-slim` (Debian, glibc; no Alpine). El build ejecuta una comprobación de arranque (better-sqlite3 con WAL y argon2) para que un módulo nativo incompatible rompa el build y no el despliegue.
 - Endpoint de salud `/healthz` y versión visible en el pie de la app y en `/version`.
-- Copia de seguridad: comando documentado (`sqlite3 .backup`) y copia automática periódica durante la jornada al volumen, más descarga manual desde el panel.
+- Copia de seguridad: comando documentado (`sqlite3 .backup`) y copia automática periódica durante la jornada al volumen, más descarga manual desde el panel. Las copias cubren **solo `app.db`**; `demo.db` no se respalda.
+
+## 9 bis. Modo de trabajo: DEMO / REAL
+
+Permite practicar con datos de prueba sin riesgo para los datos reales, y que el día de las elecciones la app esté en modo REAL sin intervención.
+
+**Datos separados**
+- `data/app.db`: configuración (colegio, mesas, censos, cortes, agentes y PIN, candidaturas, administrador, ajustes) y captura **real** (participación, recuento, auditoría real).
+- `data/demo.db`: **solo** captura de prueba y su auditoría. Referencia mesas, cortes y candidaturas de `app.db` por id.
+- La configuración es la misma y se edita igual en ambos modos; sus cambios se auditan **siempre en `app.db`**. Los agentes usan sus PIN reales también en DEMO.
+- **Estructural, no por comprobaciones dispersas:** todo el acceso a las tablas de captura pasa por una única capa (`Captura`) que el gestor de datos ata al destino según el modo (DEMO → `demo.db`, REAL → `app.db`). En DEMO no existe ningún camino de código hacia la captura real.
+
+**Modo efectivo** = override manual si existe y sigue vigente; si no, automático:
+- `ELECTION_DATE` (AAAA-MM-DD, zona `Europe/Madrid`; por defecto `2026-11-29`). Antes de esa fecha el modo automático es DEMO; desde las 00:00 de ese día (Madrid), REAL.
+- Al llegar esa fecha se **anula** cualquier override manual fijado antes de ella y pasa a REAL. Un override fijado ese día o después sí se respeta. Se evalúa al atender peticiones, sin cron; el reloj se inyecta para poder probarlo.
+- Esta es la única funcionalidad que depende del reloj del servidor (el recuento no): por eso la pantalla muestra la hora del servidor en Madrid y la lista de verificación (sección 11) incluye comprobarla.
+
+**Transiciones** (atómicas e idempotentes aunque lleguen peticiones simultáneas): entrar en DEMO parte de una `demo.db` vacía; salir de DEMO a REAL elimina `demo.db`. Nada de lo hecho en la demo sobrevive. La ruta de borrado es una constante que apunta solo a `demo.db`, con una comprobación que impide borrar `app.db`.
+
+**Pantalla de administración "Modo de trabajo"**
+- Muestra el modo efectivo, por qué (manual o automático), la fecha de elecciones y la hora del servidor en Madrid.
+- Pasar a DEMO o a REAL exige la contraseña de administrador y teclear la palabra `DEMO` o `REAL`. Al salir de DEMO se indica cuántos registros de prueba se perderán.
+- Desde el día de las elecciones, pasar a DEMO exige la confirmación reforzada `DEMO EN JORNADA`; pasar a REAL a mano nunca la exige. Todo cambio de modo y toda anulación de override se audita en `app.db`.
+- "Reiniciar demo" (solo visible en DEMO) borra `demo.db` y la recrea vacía.
+
+**Señalización:** banner fijo naranja "MODO DEMO - datos de prueba" en todas las pantallas (administración y agente); en REAL, un indicador discreto. `/healthz` y `/version` incluyen el modo. Los agentes no eligen ni cambian el modo. Las capturas de `/pantallazo` en DEMO llevan marca de agua "DEMO" (sección 7).
 
 ## 10. Hoja de ruta por versiones
 
@@ -149,7 +177,8 @@ Formato de versión: **0.X.y** (X e y de 1 a 100). Solo la versión del día de 
 |---------|-----------|---------------------|
 | **0.1.y** | Esqueleto: servidor, Docker, `/healthz`, `/version`, página de inicio mobile-first, despliegue detrás de Nginx Proxy Manager. | La URL pública responde por HTTPS mostrando la versión. |
 | **0.2.y** | Modelo de datos, migraciones, seed de las 6 mesas y los 6 cortes, login de administrador, CRUD de mesas (censo editable), agentes y generación de PIN. | El administrador crea un agente, le asigna una mesa y obtiene su PIN. |
-| **0.3.y** | Acceso de agentes por PIN, límite de intentos, captura de participación por cortes con validaciones, el administrador puede introducir datos por cualquier mesa. | Un agente guarda su dato desde el móvil; las validaciones rechazan datos incoherentes. |
+| **0.3.1** | Modo DEMO / REAL (sección 9 bis): `demo.db` separada, modo automático por `ELECTION_DATE` y manual desde el panel, banner, contadores de intentos separados (admin / PIN) y desbloqueo de IP. | En DEMO nada se escribe en los datos reales; el día de las elecciones la app pasa sola a REAL. |
+| **0.3.2** | Acceso de agentes por PIN, captura de participación por cortes con validaciones, el administrador puede introducir, corregir y vaciar datos de cualquier mesa y corte. | Un agente guarda su dato desde el móvil; las validaciones rechazan datos incoherentes. |
 | **0.4.y** | Panel resumen (mesa × corte, parciales, %), vista pantallazo con variantes y hora de actualización, histórico de cambios. | Se hace un pantallazo legible en un móvil de 360 px. |
 | **0.5.y** | Candidaturas configurables, modo recuento del Congreso (abrir/cerrar), validación de la suma, avance de mesas escrutadas y totales, variante pantallazo de recuento. | Una mesa completa su recuento y el total del colegio se actualiza. |
 | **0.6.y** | Recuento del Senado según el modelo acordado. | Una mesa registra el Senado y el resumen lo refleja. |
@@ -165,12 +194,13 @@ Formato de versión: **0.X.y** (X e y de 1 a 100). Solo la versión del día de 
 - [ ] Candidaturas del Congreso (y Senado) cargadas y ordenadas.
 - [ ] Copia de seguridad probada y restauración verificada.
 - [ ] Hora del servidor correcta (`Europe/Madrid`).
+- [ ] A primera hora del 29N: comprobar que el banner dice REAL (sin banner naranja), que `/version` devuelve `"modo":"REAL"` y que la hora del servidor en la pantalla "Modo de trabajo" es la de Madrid.
 - [ ] Acceso desde datos móviles comprobado.
 - [ ] Plan B documentado: el administrador introduce todo si falla un agente o la red.
 
 ## 12. Decisiones cerradas y pendientes
 
-Cerradas: elecciones generales (Congreso y Senado), 6 mesas del Colegio Dulcinea, censo de europeas editable, cortes a las 10, 12, 14, 16, 18 y 20, participación acumulada, acceso por PIN con administración que puede introducir datos, Congreso en 0.5.y y Senado en 0.6.y, candidaturas configurables desde el panel, despliegue Docker + Nginx Proxy Manager, versionado 0.X.y hasta 1.0.0.
+Cerradas: elecciones generales (Congreso y Senado), 6 mesas del Colegio Dulcinea, censo de europeas editable, cortes a las 10, 12, 14, 16, 18 y 20, participación acumulada, acceso por PIN con administración que puede introducir datos, Congreso en 0.5.y y Senado en 0.6.y, candidaturas configurables desde el panel, despliegue Docker + Nginx Proxy Manager, versionado 0.X.y hasta 1.0.0, modo DEMO / REAL con `demo.db` separada (sección 9 bis), contadores de intentos separados para administrador y agentes.
 
 Pendientes (se resuelven antes de la fase indicada):
 - Modelo exacto del Senado y lista de candidatos (antes de 0.6.y).

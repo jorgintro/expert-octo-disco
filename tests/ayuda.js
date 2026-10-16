@@ -1,5 +1,8 @@
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { crearApp } from '../src/app.js';
-import { abrirDb, migrar } from '../src/db.js';
+import { abrirDb, migrarApp } from '../src/db.js';
 import { sembrar } from '../src/seed.js';
 
 export const CONFIG = {
@@ -11,14 +14,31 @@ export const CONFIG = {
   adminPasswordInitial: 'contraseña-inicial-1',
   cookieSegura: true,
   trustProxy: 2,
+  fechaElecciones: '2026-11-29',
 };
 
-export async function crearEntorno() {
+const directorios = [];
+process.on('exit', () => directorios.forEach((d) => rmSync(d, { recursive: true, force: true })));
+export const crearDirectorioTemporal = () => {
+  const d = mkdtempSync(path.join(tmpdir(), 'tiroriro-test-'));
+  directorios.push(d);
+  return d;
+};
+
+// Reloj simulado (ms). Por defecto, antes de las elecciones (modo automático DEMO).
+export function crearReloj(iso = '2026-10-20T10:00:00Z') {
+  let t = Date.parse(iso);
+  return { ahora: () => t, fijar: (nuevo) => { t = Date.parse(nuevo); } };
+}
+
+export async function crearEntorno({ reloj = crearReloj() } = {}) {
+  const dataDir = crearDirectorioTemporal();
+  const config = { ...CONFIG, dataDir };
   const db = abrirDb(':memory:');
-  migrar(db);
-  await sembrar(db, CONFIG);
-  const app = crearApp({ db, config: CONFIG });
-  return { app, db };
+  migrarApp(db);
+  await sembrar(db, config);
+  const app = crearApp({ db, config, reloj: reloj.ahora });
+  return { app, db, dataDir, reloj, config };
 }
 
 const formulario = (datos) => new URLSearchParams(datos).toString();

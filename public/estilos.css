@@ -59,3 +59,19 @@ table { width: 100%; border-collapse: collapse; background: var(--tarjeta); }
 th, td { padding: 0.6rem 0.5rem; border-bottom: 1px solid var(--borde); text-align: left; }
 .num { text-align: right; font-variant-numeric: tabular-nums; }
 .pin { font-size: 2.5rem; font-weight: 700; letter-spacing: 0.35em; text-align: center; font-family: ui-monospace, monospace; margin: 0.5rem 0; }
+
+/* ---- Modo de trabajo ---- */
+.banner-demo {
+  position: sticky; top: 0; z-index: 100; padding: 0.6rem 1rem; text-align: center;
+  font-weight: 700; color: #1a1000; background: #ff9800; border-bottom: 3px solid #e65100;
+}
+.barra-real { height: 4px; background: #2e7d32; }
+.modo-actual { font-size: 1.3rem; }
+.modo-demo strong { color: #b34700; }
+.modo-real strong { color: #1b5e20; }
+.nota { font-size: 0.9rem; color: var(--suave); }
+select {
+  width: 100%; min-height: 3rem; padding: 0.5rem 0.75rem; font: inherit;
+  border: 1px solid var(--suave); border-radius: 0.5rem; background: #fff; color: var(--texto);
+}
+td form { margin: 0; }

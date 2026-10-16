@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { crearSesion } from '../src/sesiones.js';
 import { hmacPin } from '../src/pin.js';
-import { MAX_FALLOS } from '../src/limiteIntentos.js';
+import { LIMITES } from '../src/limiteIntentos.js';
+const MAX_FALLOS = LIMITES.admin.max;
 import { CONFIG, cookieDe, crearEntorno, get, intentarLogin, loginAdmin, post } from './ayuda.js';
 
 const auditoria = (db, accion) => db.prepare('SELECT * FROM auditoria WHERE accion = ? ORDER BY id').all(accion);
@@ -11,7 +12,7 @@ const auditoria = (db, accion) => db.prepare('SELECT * FROM auditoria WHERE acci
 
 test('sin sesión, el panel redirige al login (GET y POST)', async () => {
   const { app } = await crearEntorno();
-  for (const url of ['/admin', '/admin/mesas', '/admin/agentes', '/admin/password']) {
+  for (const url of ['/admin', '/admin/mesas', '/admin/agentes', '/admin/password', '/admin/modo', '/admin/bloqueos']) {
     const r = await get(app, url);
     assert.equal(r.statusCode, 302, url);
     assert.equal(r.headers.location, '/admin/login');
@@ -24,7 +25,7 @@ test('una sesión de agente no accede al panel de administración', async () => 
   const { app, db } = await crearEntorno();
   const id = db.prepare("INSERT INTO agente (nombre, creado_en) VALUES ('Ana', 'x')").run().lastInsertRowid;
   const { token, csrf } = crearSesion(db, CONFIG.sessionSecret, 'agente', Number(id));
-  for (const url of ['/admin', '/admin/mesas', '/admin/agentes']) {
+  for (const url of ['/admin', '/admin/mesas', '/admin/agentes', '/admin/modo', '/admin/bloqueos']) {
     assert.equal((await get(app, url, token)).statusCode, 403, url);
   }
   const r = await post(app, '/admin/mesas', { _csrf: csrf, distrito: '1', seccion: '1', letra: 'A', censo: '10' }, token);
