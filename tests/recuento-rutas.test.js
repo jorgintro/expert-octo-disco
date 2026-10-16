@@ -215,3 +215,22 @@ test('los estáticos del recuento se sirven con versión y sin caché', async ()
   assert.equal(r.statusCode, 200);
   assert.equal(r.headers['cache-control'], 'no-cache');
 });
+
+test('pantallazo: «Otros» es un desplegable cerrado con el desglose ordenado; sin pequeñas no hay fila', async () => {
+  const e = await montar(DEMO_ISO, { nCand: 8 });
+  // destacadas 0..4; pequeñas: PACMA (5), EB (6), RC (7)
+  const ver = (votos) => e.cuerpo({ ...CUADRA, votantes: String(votos.reduce((a, b) => a + b, 0) + 10), blancos: '6', nulos: '4', votos, confirmar: '1' });
+  const r = await e.adPost('4-2-A', 'cerrar', ver([100, 50, 40, 30, 20, 7, 30, 7]));
+  assert.equal(r.statusCode, 302);
+  const p = await get(e.app, '/pantallazo?variante=recuento', e.ad.cookie);
+  assert.match(p.body, /<details class="rec-otros">/);
+  assert.doesNotMatch(p.body, /<details class="rec-otros" open/);
+  const siglas = [...p.body.matchAll(/class="rp-siglas">([^<]+)</g)].map((m) => m[1]);
+  assert.deepEqual(siglas, ['EB', 'PACMA', 'RC'], 'EB (30) primero; empate PACMA/RC (7) por orden');
+  assert.match(p.body, /Otros \(3\)/);
+
+  const sin = await montar(DEMO_ISO, { nCand: 5 });
+  await sin.adPost('4-2-A', 'cerrar', sin.cuerpo({ votantes: '110', blancos: '6', nulos: '4', votos: [50, 20, 10, 10, 10], confirmar: '1' }));
+  const q = await get(sin.app, '/pantallazo?variante=recuento', sin.ad.cookie);
+  assert.doesNotMatch(q.body, /rec-otros/);
+});

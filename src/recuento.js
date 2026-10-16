@@ -112,6 +112,8 @@ export function construirResumenRecuento({ mesas, candidaturas, recuentos }) {
   const destacadas = hayDestacadas ? conPct.filter((c) => c.cand.destacada) : conPct;
   const resto = hayDestacadas ? conPct.filter((c) => !c.cand.destacada) : [];
   const votosOtros = resto.reduce((a, c) => a + c.votos, 0);
+  // Desglose: de más a menos votos; con empate, por el orden de la candidatura.
+  const restoOrdenado = [...resto].sort((a, b) => b.votos - a.votos || a.cand.orden - b.cand.orden);
 
   return {
     mesas: filasMesa,
@@ -122,7 +124,7 @@ export function construirResumenRecuento({ mesas, candidaturas, recuentos }) {
     provisional: cerradas.length < mesas.length,
     candidaturas: conPct,
     destacadas,
-    otros: resto.length > 0 ? { cantidad: resto.length, votos: votosOtros, porcentaje: porcentaje2(votosOtros, validos), candidaturas: resto } : null,
+    otros: resto.length > 0 ? { cantidad: resto.length, votos: votosOtros, porcentaje: porcentaje2(votosOtros, validos), candidaturas: restoOrdenado } : null,
     blancos,
     nulos,
     votantes,
@@ -130,6 +132,9 @@ export function construirResumenRecuento({ mesas, candidaturas, recuentos }) {
     porcentajeBlancos: porcentaje2(blancos, validos),
   };
 }
+
+// 1234 -> «1.234» (el grupo de millares también en 4 cifras, que Intl omite en es-ES).
+const miles = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 
 const MARCA_DEMO = '*** DEMO - DATOS DE PRUEBA, NO SON REALES ***';
 
@@ -144,7 +149,11 @@ export function textoRecuento({ resumen, colegio, modo, actualizado, tipoEleccio
     l.push('Todavía no hay mesas escrutadas.');
   } else {
     for (const c of resumen.destacadas) l.push(`${c.cand.siglas || c.cand.nombre}: ${c.votos} (${formatoPorcentaje2(c.porcentaje)})`);
-    if (resumen.otros) l.push(`Otros: ${resumen.otros.votos} (${formatoPorcentaje2(resumen.otros.porcentaje)})`);
+    if (resumen.otros) {
+      l.push(`Otros: ${resumen.otros.votos} votos (${formatoPorcentaje2(resumen.otros.porcentaje)})`);
+      // El desglose va siempre, con el desplegable de la pantalla abierto o cerrado.
+      l.push(resumen.otros.candidaturas.map((c) => `${c.cand.siglas || c.cand.nombre} ${miles(c.votos)}`).join(' · '));
+    }
     l.push(`Blancos: ${resumen.blancos} (${formatoPorcentaje2(resumen.porcentajeBlancos)})`);
     l.push(`Nulos: ${resumen.nulos}`);
     l.push(`*Total de votantes: ${resumen.votantes}*`);

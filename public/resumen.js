@@ -15,6 +15,21 @@
     if (actual && otro) actual.replaceWith(document.importNode(otro, true));
   }
 
+  // Desglose de «Otros» del pantallazo de recuento: el estado se guarda en el dispositivo y se
+  // reaplica tras cada refresco del sondeo y al volver de otra variante.
+  var CLAVE_OTROS = 'tiroriro:recuento:otros';
+  function aplicarOtros() {
+    var d = document.querySelector('details.rec-otros');
+    if (!d) return;
+    try { if (sessionStorage.getItem(CLAVE_OTROS) === '1') d.open = true; } catch (e) { /* sin almacenamiento */ }
+  }
+  document.addEventListener('toggle', function (e) {
+    var d = e.target;
+    if (!d || !d.classList || !d.classList.contains('rec-otros')) return;
+    try { sessionStorage.setItem(CLAVE_OTROS, d.open ? '1' : '0'); } catch (err) { /* sin almacenamiento */ }
+  }, true);
+  aplicarOtros();
+
   function sesionCaducada() {
     if (temporizador) clearInterval(temporizador);
     document.body.classList.add('sin-conexion');
@@ -45,13 +60,14 @@
       .then(function (texto) {
         if (texto === null) return;
         var nuevo = new DOMParser().parseFromString(texto, 'text/html');
-        var detalles = document.querySelector('main details');
+        var detalles = document.querySelector('main details:not(.rec-otros)');
         var abierto = detalles ? detalles.open : false;
         reemplazar(nuevo, '#banner-modo'); // también cambia si el modo cambia
         reemplazar(nuevo, 'main');
         reemplazar(nuevo, 'footer');
-        var nuevosDetalles = document.querySelector('main details');
+        var nuevosDetalles = document.querySelector('main details:not(.rec-otros)');
         if (nuevosDetalles) nuevosDetalles.open = abierto;
+        aplicarOtros();
         document.title = nuevo.title;
         document.body.classList.remove('sin-conexion');
       })

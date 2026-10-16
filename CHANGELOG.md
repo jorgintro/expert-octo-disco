@@ -2,6 +2,13 @@
 
 Formato de versión 0.X.y. La 1.0.0 solo se publica el día de las elecciones.
 
+## 0.5.2 — Desglose de «Otros» en el pantallazo de recuento
+
+- **Pantallazo → Recuento**: la fila «Otros (n)» es ahora un desplegable (cerrado por defecto; flecha pequeña y discreta). Abierto, lista bajo la fila una línea compacta por candidatura no destacada (siglas, votos y %), en letra pequeña y sin logos, de más a menos votos y, con empate, por el orden de la candidatura. La fila sigue mostrando la suma; sin candidaturas pequeñas no aparece. Crece hacia abajo sin desbordar a 360–390 px.
+- El estado abierto/cerrado se guarda en el dispositivo (`sessionStorage`, con `try/catch`): el sondeo no lo pliega y se conserva al cambiar de variante y volver. En «Modo captura» el desplegable se queda como esté y se puede seguir abriendo o cerrando tocando la fila.
+- **Copiar como texto** (Recuento): `Otros: N votos (X %)` y, debajo, una línea con todas las pequeñas (`SIGLAS 1.234 · SIGLAS 987 · …`), esté o no abierto el desplegable. Se mantienen las marcas DEMO y PROVISIONAL.
+- Los `scripts/*.sh` se versionan con permiso de ejecución en git (no hace falta `chmod` en el servidor).
+
 ## 0.5.1 — Fase 0.5: recuento del Congreso
 
 - **Candidaturas** (panel → Más → *Candidaturas*): alta, edición, orden (número de posición de la Junta Electoral Central), activa/inactiva, destacada, color corporativo y **logo subido desde el panel** (PNG, JPEG o WebP validado por sus primeros bytes). No hay candidaturas fijas en el código. No se borra una candidatura con votos. Configuración compartida por DEMO y REAL. Con el recuento activado, la estructura queda bloqueada.
