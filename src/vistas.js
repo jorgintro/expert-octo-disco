@@ -73,6 +73,16 @@ const AVISOS = {
   recuento_guardado: 'Recuento guardado.',
   recuento_mesa_cerrada: 'Mesa cerrada.',
   recuento_reabierta: 'Mesa reabierta: vuelve a estar en borrador.',
+  senado_abierto: 'Recuento del Senado abierto.',
+  senado_cerrado: 'Recuento del Senado cerrado.',
+  senado_guardado: 'Recuento del Senado guardado.',
+  senado_mesa_cerrada: 'Mesa del Senado cerrada.',
+  senado_reabierta: 'Mesa del Senado reabierta: vuelve a estar en borrador.',
+  senado_reiniciada: 'Recuento del Senado de la mesa reiniciado.',
+  candidato_creado: 'Candidato creado.',
+  candidato_guardado: 'Candidato guardado.',
+  candidato_movido: 'Orden actualizado.',
+  candidato_borrado: 'Candidato borrado.',
   candidatura_creada: 'Candidatura creada.',
   candidatura_guardada: 'Candidatura guardada.',
   candidatura_movida: 'Orden actualizado.',
@@ -118,6 +128,7 @@ export function paginaAdmin(titulo, { csrf, aviso: textoAviso, error, hojas = []
       <a href="/admin/mesas">Mesas</a>
       <a href="/admin/agentes">Agentes</a>
       <a href="/admin/candidaturas">Candidaturas</a>
+      <a href="/admin/senado/candidatos">Candidatos Senado</a>
       <a href="/admin/cortes">Cortes</a>
       <a href="/admin/historico">Histórico</a>
       <a href="/admin/modo">Modo</a>

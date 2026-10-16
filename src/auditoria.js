@@ -17,7 +17,7 @@ export function auditar(db, actor, accion, entidad, entidadId, anterior = null, 
 
 // ---- Consulta (histórico) ----
 // Entidades cuya auditoría es de CAPTURA (vive en la base del modo: demo.db o app.db).
-export const ENTIDADES_CAPTURA = ['participacion', 'recuento'];
+export const ENTIDADES_CAPTURA = ['participacion', 'recuento', 'senado'];
 
 function condiciones({ mesa = null, actor = null, accion = null, excluirAcciones = [] } = {}, excluirEntidades = []) {
   const donde = [];
@@ -32,7 +32,7 @@ function condiciones({ mesa = null, actor = null, accion = null, excluirAcciones
   }
   if (mesa) {
     // Cambios de la propia mesa (censo, baja...) y datos de participación de esa mesa.
-    donde.push(`((entidad IN ('mesa', 'recuento') AND entidad_id = ?) OR (entidad = 'participacion' AND COALESCE(
+    donde.push(`((entidad IN ('mesa', 'recuento', 'senado') AND entidad_id = ?) OR (entidad = 'participacion' AND COALESCE(
       CASE WHEN json_valid(valor_nuevo) THEN json_extract(valor_nuevo, '$.mesa_id') END,
       CASE WHEN json_valid(valor_anterior) THEN json_extract(valor_anterior, '$.mesa_id') END) = ?))`);
     params.push(mesa, mesa);
