@@ -136,7 +136,8 @@ Todas las fechas en UTC (ISO 8601), mostradas en `Europe/Madrid`.
 - Servidor: PC con Debian, Docker y **Nginx Proxy Manager**; dominio `tiroriro.jdiaz.bid` gestionado en Cloudflare.
 - Un contenedor para la app, orquestado con `docker-compose.yml`, con la base de datos en un volumen persistente (`./data`).
 - La app escucha en un puerto interno sin publicarlo hacia fuera; Nginx Proxy Manager hace el proxy inverso con certificado, hacia el contenedor por la red de Docker compartida (o el puerto enlazado a `127.0.0.1`).
-- Variables de entorno: `PORT`, `DATA_DIR`, `SESSION_SECRET`, `PIN_HMAC_SECRET`, `ADMIN_USER`, `ADMIN_PASSWORD_INITIAL`, `TZ=Europe/Madrid`.
+- Variables de entorno: `PORT`, `DATA_DIR`, `SESSION_SECRET`, `PIN_HMAC_SECRET`, `ADMIN_USER`, `ADMIN_PASSWORD_INITIAL`, `TZ=Europe/Madrid`, `TRUST_PROXY` (saltos de proxy: 2 con Cloudflare + Nginx Proxy Manager) y `COOKIE_SECURE`.
+- Runtime: **Node.js 22 (LTS)**. Imagen base `node:22-bookworm-slim` (Debian, glibc; no Alpine). El build ejecuta una comprobación de arranque (better-sqlite3 con WAL y argon2) para que un módulo nativo incompatible rompa el build y no el despliegue.
 - Endpoint de salud `/healthz` y versión visible en el pie de la app y en `/version`.
 - Copia de seguridad: comando documentado (`sqlite3 .backup`) y copia automática periódica durante la jornada al volumen, más descarga manual desde el panel.
 

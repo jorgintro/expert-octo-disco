@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { crearSesion } from '../src/sesiones.js';
 import { hmacPin } from '../src/pin.js';
 import { MAX_FALLOS } from '../src/limiteIntentos.js';
-import { CONFIG, cookieDe, crearEntorno, get, loginAdmin, post } from './ayuda.js';
+import { CONFIG, cookieDe, crearEntorno, get, intentarLogin, loginAdmin, post } from './ayuda.js';
 
 const auditoria = (db, accion) => db.prepare('SELECT * FROM auditoria WHERE accion = ? ORDER BY id').all(accion);
 
@@ -60,11 +60,11 @@ test('login correcto: cookie HttpOnly, Secure, SameSite=Lax y auditoría', async
 
 test('login incorrecto: 401 con mensaje genérico y sin cookie', async () => {
   const { app } = await crearEntorno();
-  const r = await post(app, '/admin/login', { usuario: 'admin', contrasena: 'mala' });
+  const r = await intentarLogin(app, { usuario: 'admin', contrasena: 'mala' });
   assert.equal(r.statusCode, 401);
   assert.match(r.body, /Usuario o contraseña incorrectos/);
   assert.equal(cookieDe(r), undefined);
-  const r2 = await post(app, '/admin/login', { usuario: 'noexiste', contrasena: 'mala' });
+  const r2 = await intentarLogin(app, { usuario: 'noexiste', contrasena: 'mala' });
   assert.equal(r2.statusCode, 401);
   assert.match(r2.body, /Usuario o contraseña incorrectos/);
 });
@@ -73,13 +73,90 @@ test('tras 5 fallos la IP se bloquea, incluso con la contraseña correcta; otra 
   const { app } = await crearEntorno();
   const ip = { remoteAddress: '10.0.0.7' };
   for (let i = 0; i < MAX_FALLOS; i++) {
-    assert.equal((await post(app, '/admin/login', { usuario: 'admin', contrasena: 'mala' }, null, ip)).statusCode, 401);
+    assert.equal((await intentarLogin(app, { usuario: 'admin', contrasena: 'mala' }, ip)).statusCode, 401);
   }
-  const bloqueado = await post(app, '/admin/login', { usuario: 'admin', contrasena: CONFIG.adminPasswordInitial }, null, ip);
+  const bloqueado = await intentarLogin(app, { usuario: 'admin', contrasena: CONFIG.adminPasswordInitial }, ip);
   assert.equal(bloqueado.statusCode, 429);
   assert.equal(cookieDe(bloqueado), undefined);
-  const otra = await post(app, '/admin/login', { usuario: 'admin', contrasena: CONFIG.adminPasswordInitial }, null, { remoteAddress: '10.0.0.8' });
+  const otra = await intentarLogin(app, { usuario: 'admin', contrasena: CONFIG.adminPasswordInitial }, { remoteAddress: '10.0.0.8' });
   assert.equal(otra.statusCode, 302);
+});
+
+test('el login exige el token CSRF y su cookie', async () => {
+  const { app, db } = await crearEntorno();
+  const credenciales = { usuario: 'admin', contrasena: CONFIG.adminPasswordInitial };
+  const form = (datos) => new URLSearchParams(datos).toString();
+  const cabecera = { 'content-type': 'application/x-www-form-urlencoded' };
+
+  // El formulario trae token y cookie HttpOnly con ruta restringida
+  const pagina = await get(app, '/admin/login');
+  const csrf = /name="_csrf" value="([^"]+)"/.exec(pagina.body)[1];
+  const cookie = pagina.cookies.find((c) => c.name === 'csrf_login');
+  assert.equal(cookie.httpOnly, true);
+  assert.equal(cookie.sameSite, 'Lax');
+  assert.equal(cookie.path, '/admin/login');
+
+  const intento = (payload, headers = {}) =>
+    app.inject({ method: 'POST', url: '/admin/login', payload: form(payload), headers: { ...cabecera, ...headers } });
+  // Sin token, sin cookie, token falso o cookie de otra emisión: todo rechazado
+  assert.equal((await intento(credenciales, { cookie: `csrf_login=${cookie.value}` })).statusCode, 403);
+  assert.equal((await intento({ ...credenciales, _csrf: csrf })).statusCode, 403);
+  assert.equal((await intento({ ...credenciales, _csrf: 'falso' }, { cookie: `csrf_login=${cookie.value}` })).statusCode, 403);
+  assert.equal((await intento({ ...credenciales, _csrf: csrf }, { cookie: 'csrf_login=otro-valor' })).statusCode, 403);
+  const rechazado = await intento(credenciales);
+  assert.equal(cookieDe(rechazado), undefined);
+  assert.equal(auditoria(db, 'login').length, 0);
+
+  // Con la pareja válida entra
+  const ok = await intento({ ...credenciales, _csrf: csrf }, { cookie: `csrf_login=${cookie.value}` });
+  assert.equal(ok.statusCode, 302);
+});
+
+test('un CSRF rechazado no consume intentos del límite por IP', async () => {
+  const { app } = await crearEntorno();
+  const ip = { remoteAddress: '10.0.0.9' };
+  for (let i = 0; i < MAX_FALLOS + 2; i++) {
+    const r = await app.inject({ method: 'POST', url: '/admin/login', payload: 'usuario=admin&contrasena=x', headers: { 'content-type': 'application/x-www-form-urlencoded' }, ...ip });
+    assert.equal(r.statusCode, 403);
+  }
+  assert.equal((await intentarLogin(app, { usuario: 'admin', contrasena: CONFIG.adminPasswordInitial }, ip)).statusCode, 302);
+});
+
+test('con TRUST_PROXY=2 la IP real es la del cliente y X-Forwarded-For falseado no evita el bloqueo', async () => {
+  const { app } = await crearEntorno();
+  // Cadena que ve la app: [falseada por el atacante], cliente real, Cloudflare; socket = NPM
+  const cadena = (falsa) => ({
+    remoteAddress: '172.18.0.2',
+    headers: { 'x-forwarded-for': `${falsa}, 203.0.113.9, 172.70.1.1` },
+  });
+  for (let i = 0; i < MAX_FALLOS; i++) {
+    const r = await intentarLogin(app, { usuario: 'admin', contrasena: 'mala' }, cadena(`198.51.100.${i}`));
+    assert.equal(r.statusCode, 401);
+  }
+  const bloqueado = await intentarLogin(app, { usuario: 'admin', contrasena: CONFIG.adminPasswordInitial }, cadena('198.51.100.200'));
+  assert.equal(bloqueado.statusCode, 429);
+  // Otro cliente real, con el mismo proxy, no queda afectado
+  const otro = await intentarLogin(app, { usuario: 'admin', contrasena: CONFIG.adminPasswordInitial }, {
+    remoteAddress: '172.18.0.2',
+    headers: { 'x-forwarded-for': '203.0.113.77, 172.70.1.1' },
+  });
+  assert.equal(otro.statusCode, 302);
+});
+
+test('un cliente que llega directo (par público) no puede falsear X-Forwarded-For', async () => {
+  const { app } = await crearEntorno();
+  for (let i = 0; i < MAX_FALLOS; i++) {
+    const r = await intentarLogin(app, { usuario: 'admin', contrasena: 'mala' }, {
+      remoteAddress: '203.0.113.50',
+      headers: { 'x-forwarded-for': `198.51.100.${i}, 198.51.100.${i + 100}` },
+    });
+    assert.equal(r.statusCode, 401);
+  }
+  const r = await intentarLogin(app, { usuario: 'admin', contrasena: CONFIG.adminPasswordInitial }, {
+    remoteAddress: '203.0.113.50',
+    headers: { 'x-forwarded-for': '198.51.100.250, 198.51.100.251' },
+  });
+  assert.equal(r.statusCode, 429);
 });
 
 test('cerrar sesión invalida la cookie', async () => {

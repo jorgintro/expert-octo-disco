@@ -6,7 +6,7 @@ Versión actual: ver `package.json` (también en el pie de la app y en `/version
 
 ## Desarrollo local
 
-Requiere Node.js 20 o superior (y herramientas de compilación si `better-sqlite3` o `argon2` no tienen binario para tu sistema).
+Requiere **Node.js 22 o superior** (y herramientas de compilación si `better-sqlite3` o `argon2` no tienen binario para tu sistema).
 
 ```bash
 npm ci
@@ -25,13 +25,43 @@ Después abre <http://localhost:3000>. Al arrancar se aplican las migraciones y 
    Da permisos al volumen de datos (el usuario del contenedor es `node`, uid 1000): `sudo chown -R 1000:1000 data`.
 2. Comprueba que existe la red compartida con Nginx Proxy Manager:
    `docker network ls | grep npm_default`. Si NPM usa otro nombre de red, cámbialo en `docker-compose.yml`.
-3. Levanta la app: `docker compose up -d --build`.
+3. Levanta la app: `docker compose up -d --build`. El build ejecuta una comprobación de arranque (`scripts/comprobar-arranque.js`: better-sqlite3 con WAL, argon2, migraciones y seed) y se rompe si el entorno no puede ejecutar la app.
 4. Verifica desde otro contenedor de la red o, tras configurar NPM, desde fuera:
    - `/healthz` devuelve `{"estado":"ok"}`.
    - `/version` devuelve la versión.
    - `/admin/login` permite entrar con `ADMIN_USER` y `ADMIN_PASSWORD_INITIAL`. Cambia la contraseña desde **Contraseña**.
 
 La app no publica ningún puerto a Internet. La base de datos SQLite está en `./data/app.db` (volumen). Al actualizar de versión, `docker compose up -d --build` aplica las migraciones nuevas sin perder datos.
+
+## Despliegue y actualización (scripts)
+
+Imagen: `node:22-bookworm-slim` (Debian/glibc). No uses Alpine ni Node 20: `better-sqlite3` 13 exige Node 22.
+
+```bash
+scripts/deploy.sh              # avanza la rama actual (git fetch + --ff-only) y despliega
+scripts/deploy.sh v0.2.2       # despliega una etiqueta (o commit) concreta; sirve también para volver atrás
+scripts/smoke.sh               # prueba de humo de la imagen ya construida (tiroriro:local); muestra OK o el error
+```
+
+`deploy.sh` hace, en orden: valida el árbol git (`fetch`, sin cambios locales, `--ff-only` posible), **copia la base** a `data/copia-predeploy-AAAAMMDD-HHMMSS.db` (con `.backup` de SQLite), actualiza el código, ejecuta `docker compose up -d --build`, espera a `/healthz` (90 s; `ESPERA_S=…` para cambiarlo), muestra `/version` y, si algo falla, imprime los logs del contenedor y cómo volver atrás. Si estás en HEAD desacoplado por un despliegue con etiqueta, vuelve a la rama con `git checkout <rama>`.
+
+`smoke.sh` comprueba sobre la imagen: versión de Node, usuario uid 1000, `sqlite3`, better-sqlite3/argon2/app (`comprobar-arranque.js`) y que `./data` es escribible. Un segfault (código 139) se señala expresamente.
+
+## IP real del cliente (`TRUST_PROXY`)
+
+El bloqueo de intentos de login es por IP, así que la app debe conocer la IP real. La cadena es *cliente → Cloudflare → Nginx Proxy Manager → app* y `TRUST_PROXY` indica cuántos saltos son de confianza:
+
+| Situación | `TRUST_PROXY` |
+|-----------|---------------|
+| Cloudflare con nube naranja + NPM (actual) | `2` |
+| Solo NPM (DNS sin proxy de Cloudflare) | `1` |
+| Acceso directo, sin proxy | `0` |
+
+Además, la app solo confía en `X-Forwarded-*` si quien conecta con ella es una IP privada (la red Docker): un cliente que llegue directo no puede falsear su IP. Si pones un valor que no corresponde a tu cadena, la IP detectada será incorrecta (la de un proxy, o una falseable).
+
+Comprobación: tras iniciar sesión (o fallar un login), `docker compose logs --tail 20 tiroriro` debe mostrar en `remoteAddress` tu IP pública, no una `172.x`. Las cookies de sesión llevan siempre el atributo `Secure`; el navegador las acepta porque accede por HTTPS.
+
+Limitación: si alguien accede al servidor saltándose Cloudflare (a la IP de origen) puede falsear el primer salto de `X-Forwarded-For`. Para evitarlo, restringe en el cortafuegos los puertos 80/443 a las IP de Cloudflare.
 
 ## Configuración en Nginx Proxy Manager
 
@@ -63,6 +93,19 @@ docker compose exec tiroriro sqlite3 /app/data/app.db ".backup '/app/data/copia-
 ```
 
 Las copias quedan en `./data` del servidor. Si tienes `sqlite3` en el host, también vale `sqlite3 data/app.db ".backup 'data/copia.db'"`. No copies el archivo `app.db` a mano mientras la app escribe (el modo WAL usa archivos auxiliares). La copia automática y la descarga desde el panel llegan en fases posteriores.
+
+## Consultar la base de datos desde el contenedor
+
+La imagen incluye el cliente `sqlite3`. Para mirar sin riesgo de modificar nada, usa `-readonly`:
+
+```bash
+docker compose exec tiroriro sqlite3 -readonly -header -column /app/data/app.db "SELECT codigo, censo, activa FROM mesa"
+docker compose exec tiroriro sqlite3 -readonly -header -column /app/data/app.db "SELECT id, nombre, activo, pin_hmac IS NOT NULL AS con_pin FROM agente"
+docker compose exec tiroriro sqlite3 -readonly -header -column /app/data/app.db "SELECT fecha, actor_tipo, accion, entidad, valor_anterior, valor_nuevo FROM auditoria ORDER BY id DESC LIMIT 20"
+docker compose exec -it tiroriro sqlite3 -readonly /app/data/app.db      # consola interactiva
+```
+
+Las fechas están en UTC. Si el contenedor no está arrancado, usa `docker compose run --rm --no-deps --entrypoint sqlite3 tiroriro -readonly -header -column /app/data/app.db "…"`.
 
 ## Uso del panel de administración (0.2)
 

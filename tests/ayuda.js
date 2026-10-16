@@ -10,6 +10,7 @@ export const CONFIG = {
   adminUser: 'admin',
   adminPasswordInitial: 'contraseña-inicial-1',
   cookieSegura: true,
+  trustProxy: 2,
 };
 
 export async function crearEntorno() {
@@ -39,9 +40,24 @@ export function get(app, url, cookie) {
 
 export const cookieDe = (res) => res.cookies.find((c) => c.name === 'sid');
 
+// Pide el formulario de login (token CSRF + cookie) y envía el POST, como haría un navegador.
+export async function intentarLogin(app, datos, { remoteAddress, headers = {} } = {}) {
+  const red = remoteAddress ? { remoteAddress } : {};
+  const pagina = await app.inject({ method: 'GET', url: '/admin/login', headers, ...red });
+  const csrf = /name="_csrf" value="([^"]+)"/.exec(pagina.body)?.[1];
+  const valor = pagina.cookies.find((c) => c.name === 'csrf_login')?.value;
+  return app.inject({
+    method: 'POST',
+    url: '/admin/login',
+    payload: formulario({ _csrf: csrf, ...datos }),
+    headers: { ...CABECERA_FORM, cookie: `csrf_login=${valor}`, ...headers },
+    ...red,
+  });
+}
+
 // Inicia sesión como administrador y devuelve la cookie y el token CSRF.
 export async function loginAdmin(app, contrasena = CONFIG.adminPasswordInitial) {
-  const res = await post(app, '/admin/login', { usuario: CONFIG.adminUser, contrasena });
+  const res = await intentarLogin(app, { usuario: CONFIG.adminUser, contrasena });
   const cookie = cookieDe(res)?.value;
   const pagina = await get(app, '/admin', cookie);
   const csrf = /name="_csrf" value="([^"]+)"/.exec(pagina.body)?.[1];

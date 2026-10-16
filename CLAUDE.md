@@ -13,10 +13,10 @@ Miniaplicación web mobile-first, autoalojada, para que los agentes de un colegi
 
 ## Stack (decidido, no cambiar sin avisar)
 
-- **Node.js 20+ (LTS)** con **SQLite** (`better-sqlite3`, modo WAL).
+- **Node.js 22 (LTS)** con **SQLite** (`better-sqlite3`, modo WAL).
 - Servidor ligero (Fastify o Express) con **HTML renderizado en servidor** y JavaScript mínimo en el cliente. **Sin paso de build** complejo ni frameworks pesados: debe ser fácil de leer y modificar.
 - CSS propio sencillo, mobile-first (diseña para 360 px de ancho y escala hacia arriba).
-- **Docker** (un contenedor) + `docker-compose.yml`, con la base de datos en el volumen `./data`.
+- **Docker** (un contenedor, imagen base `node:22-bookworm-slim`: Debian/glibc, **no Alpine**) + `docker-compose.yml`, con la base de datos en el volumen `./data`.
 - Despliegue detrás de **Nginx Proxy Manager** (HTTPS lo termina él) en `tiroriro.jdiaz.bid`. La app no publica su puerto a Internet.
 - Dependencias: pocas y justificadas. Fija versiones y mantén `package-lock.json`.
 
@@ -88,6 +88,7 @@ Miniaplicación web mobile-first, autoalojada, para que los agentes de un colegi
 
 - `docker compose up -d --build` debe bastar para levantar la app.
 - Endpoint `/healthz` (para comprobaciones) y `/version`.
+- El build de Docker ejecuta `scripts/comprobar-arranque.js` (better-sqlite3 con WAL, argon2, migraciones y seed): un módulo nativo incompatible debe romper el **build**, no el despliegue. `scripts/smoke.sh` repite la prueba sobre la imagen construida y `scripts/deploy.sh` despliega con copia previa de la base.
 - Documenta en `README.md` la configuración del proxy host en Nginx Proxy Manager (dominio, esquema `http`, host y puerto del contenedor, certificado SSL, forzar HTTPS) y la copia de seguridad (`sqlite3 data/app.db ".backup ..."`).
 
 ## Qué NO hacer
