@@ -10,6 +10,9 @@ import rutasBloqueos from './bloqueos.js';
 import rutasMesas from './mesas.js';
 import rutasParticipacion from './participacion.js';
 import rutasModo from './modo.js';
+import rutasResumen from './resumen.js';
+import rutasHistorico from './historico.js';
+import rutasCortes from './cortes.js';
 
 const MIN_PASSWORD = 10;
 let hashFicticio = null; // para igualar tiempos cuando el usuario no existe
@@ -127,7 +130,11 @@ export default async function rutasAdmin(app) {
 </section>
 <p><a class="boton" href="/admin/mesas">Mesas y censo</a></p>
 <p><a class="boton" href="/admin/agentes">Agentes y PIN</a></p>
-<p><a class="boton" href="/admin/participacion">Participación (tabla mesa × corte)</a></p>
+<p><a class="boton" href="/admin/resumen">Resumen de participación</a></p>
+<p><a class="boton" href="/pantallazo">Pantallazo (para WhatsApp)</a></p>
+<p><a class="boton boton-sec" href="/admin/participacion">Participación: introducir o corregir datos</a></p>
+<p><a class="boton boton-sec" href="/admin/historico">Histórico de cambios</a></p>
+<p><a class="boton boton-sec" href="/admin/cortes">Horas de los cortes</a></p>
 <p><a class="boton boton-sec" href="/admin/modo">Modo de trabajo (DEMO / REAL)</a></p>`.texto
         )
       );
@@ -185,6 +192,9 @@ export default async function rutasAdmin(app) {
 
     await priv.register(rutasMesas);
     await priv.register(rutasAgentes);
+    await priv.register(rutasResumen);
+    await priv.register(rutasHistorico);
+    await priv.register(rutasCortes);
     await priv.register(rutasParticipacion);
     await priv.register(rutasModo);
     await priv.register(rutasBloqueos);

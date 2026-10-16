@@ -143,6 +143,19 @@ docker compose exec -it tiroriro sqlite3 -readonly /app/data/app.db      # conso
 
 Las fechas están en UTC. Si el contenedor no está arrancado, usa `docker compose run --rm --no-deps --entrypoint sqlite3 tiroriro -readonly -header -column /app/data/app.db "…"`.
 
+## Resumen, pantallazo, histórico y cortes (0.4)
+
+- **Resumen** (panel → *Resumen*): tabla mesa × corte con acumulado, parcial y %; totales; `n/N` mesas informadas por corte. Se actualiza sola cada 5 s (muestra la hora de la última actualización). Las mesas de baja no cuentan. El % del **total** es sobre el censo de las mesas informadas en ese corte.
+- **Pantallazo** (panel → *Pantallazo*, o `/pantallazo`): vista limpia para enviar por WhatsApp.
+  1. Elige la variante: **Participación** (mesas × cortes con datos) o **Último corte** (acumulado, parcial y % por mesa). *Recuento* llegará en la 0.5.
+  2. Para una captura limpia, pulsa **Modo captura** (oculta los controles; toca el título para volver) y haz el pantallazo en vertical.
+  3. O pulsa **Copiar como texto** y pega en WhatsApp (el texto se puede revisar en «Ver el texto que se copia»).
+  - Pone «PROVISIONAL» mientras al último corte con datos le falten mesas, y la hora de actualización (Madrid) en grande.
+  - **En DEMO lleva una marca de agua «DEMO» sobre toda la captura**, y el texto copiado también va marcado: no se pueden confundir con datos reales.
+  - Si se pierde la conexión, aparece una franja roja «SIN CONEXIÓN · los datos son de las HH:MM:SS» arriba de la captura.
+- **Histórico** (panel → Más → *Histórico*): auditoría con hora de Madrid, filtrable por mesa, actor (agente, administrador, sistema) y acción; 25 por página. En REAL muestra lo de `app.db`; en DEMO, la configuración y la captura de la demo (con etiqueta DEMO). Nunca muestra PIN ni contraseñas.
+- **Cortes** (panel → Más → *Cortes*): cambia la hora de cada corte (HH:MM, en orden creciente). Si el corte ya tiene datos —reales o de demo— pide confirmación antes: los datos no cambian, solo la hora a la que se refieren. Es configuración compartida por DEMO y REAL.
+
 ## Uso con agentes y participación (0.3)
 
 - **Agentes:** entran en la raíz (`https://tiroriro.jdiaz.bid/`) con su PIN de 6 dígitos. Ven solo sus mesas. Para cada corte introducen el **acumulado** de votantes de la mesa (el parcial de cada tramo y el % sobre censo se calculan). El corte actual es el más reciente cuya hora ya pasó; pueden elegir otro. Pueden corregir sus datos, salvo los introducidos por el administrador. Si falla la conexión, el dato escrito no se pierde (se conserva también en el dispositivo) y se puede reintentar.

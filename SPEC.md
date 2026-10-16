@@ -107,21 +107,22 @@ Hay dos bases SQLite (ver la sección 9 bis): **`app.db`** (configuración y cap
 - Cuando el administrador abre el recuento: formulario del Congreso (una fila por candidatura, más blancos y nulos), con total y comprobación en vivo.
 
 **Administrador**
-- **Resumen**: tabla mesa × corte (acumulado y % sobre censo), con totales del colegio y mesas pendientes de cada corte.
+- **Resumen** (`/admin/resumen`): tabla mesa × corte con acumulado, parcial del tramo y % sobre censo; fila de totales del colegio; y, por corte, cuántas mesas están informadas (ej. `4/6`) y cuáles faltan en el último corte. Se actualiza sola por sondeo (cada 5 s) y muestra la hora de la última actualización. Solo cuentan las mesas **activas**. El **total del colegio** en un corte suma lo informado en él y su % es sobre el **censo de las mesas informadas** en ese corte (con 4/6 mesas, dividir entre el censo de las 6 daría una participación artificialmente baja); por eso el total de un corte puede ser menor que el del anterior si informaron menos mesas, y siempre se indica `n/N mesas`. En 360 px el panel se desplaza horizontalmente dentro de su contenedor, con la columna de mesa fija.
 - **Mesas**: alta/baja/edición de mesas, **censo editable**.
 - **Agentes**: alta/baja, asignación a mesas, generar/regenerar/revocar PIN.
-- **Cortes**: edición de horas.
+- **Cortes** (`/admin/cortes`): edición de la hora de cada corte (formato HH:MM, en orden estrictamente creciente; no se añaden ni se quitan cortes), auditada. Si el corte ya tiene datos (reales o de demo: la hora es configuración compartida por ambos modos) se avisa y se pide confirmación antes de cambiarla; los datos no se modifican, solo cambia la hora a la que se refieren.
 - **Candidaturas**: nombre, siglas, orden, destacada, activa (por elección).
 - **Recuento**: botón para **abrir/cerrar el recuento** (la app avisa antes de las 20:00 pero no lo impide, para no depender del reloj del servidor), avance (mesas escrutadas, ej. 5/6) y resultados por mesa y totales.
 - **Introducir datos como administrador**: acceso desde la tabla a cualquier celda.
-- **Histórico**: auditoría filtrable.
+- **Histórico** (`/admin/historico`): auditoría visible, paginada (25 por página) y filtrable por mesa, por actor (agente, administrador o sistema) y por tipo de acción, con la hora en `Europe/Madrid`. En REAL muestra `app.db`; en DEMO, la configuración de `app.db` más la captura de `demo.db` (etiquetada «DEMO»), sin la captura real. **Nunca muestra PIN ni contraseñas** (no se guardan en la auditoría y, además, se ocultan al mostrar).
 - **Copias de seguridad**: botón para descargar copia de la base de datos.
 
 **Vista pantallazo** (`/pantallazo`, solo administrador, aunque se podrá compartir un enlace de solo lectura con token en una versión posterior)
-- Pantalla limpia, sin menús, tipografía grande, buen contraste, ancho pensado para captura de móvil.
-- Título con colegio, tipo de elección y **hora de actualización** bien visible.
-- Variantes seleccionables: **Participación** (tabla mesa × corte, total colegio y %), **Último corte** (compacta), **Recuento** (candidaturas destacadas, mesas escrutadas, blancos, nulos y total).
-- Marca de estado: "Provisional" mientras haya mesas pendientes.
+- Pantalla limpia, sin menús, tipografía grande, buen contraste, ancho pensado para captura de móvil en vertical: cabe entera en 360 px sin desplazamiento horizontal.
+- Título con colegio y tipo de elección (`Elecciones Generales`) y **hora de actualización** muy visible (hora de Madrid): la de generación de la pantalla, que se refresca por sondeo (10 s). Si el sondeo falla, aparece arriba, dentro de la captura, una franja roja «SIN CONEXIÓN · los datos son de las HH:MM:SS» para que un pantallazo con datos viejos no engañe.
+- Variantes seleccionables: **Participación** (mesas en filas, cortes en columnas —solo los que ya tienen algún dato, con cabeceras abreviadas 10h, 12h…—, con fila de total del colegio, de mesas informadas y % sobre censo), **Último corte** (compacta: último corte con datos, acumulado, parcial y % por mesa, y total), **Recuento** (candidaturas destacadas, mesas escrutadas, blancos, nulos y total; llega en la 0.5, el selector ya la contempla desactivada).
+- Marca de estado: «Provisional» mientras el último corte con datos no tenga todas las mesas informadas; «Completo» cuando las tiene todas. Las mesas de baja no cuentan.
+- Los controles (selector de variante, **Copiar como texto**, **Modo captura**) van debajo del lienzo; «Modo captura» los oculta para hacer una captura limpia y se sale tocando el título. «Copiar como texto» genera un resumen en texto plano apto para WhatsApp (en DEMO, marcado al principio y al final con «*** DEMO - DATOS DE PRUEBA, NO SON REALES ***»).
 - **Marca de agua "DEMO"**: en modo DEMO, toda captura de esta vista llevará una marca de agua "DEMO" bien visible (diagonal, sobre el contenido y dentro de la propia imagen de la pantalla), para que un pantallazo de datos de prueba no pueda confundirse con datos reales en el grupo de WhatsApp. En REAL no hay marca de agua. (Requisito para la 0.4.y.)
 
 ## 8. Requisitos no funcionales
@@ -200,7 +201,7 @@ Formato de versión: **0.X.y** (X e y de 1 a 100). Solo la versión del día de 
 
 ## 12. Decisiones cerradas y pendientes
 
-Cerradas: elecciones generales (Congreso y Senado), 6 mesas del Colegio Dulcinea, censo de europeas editable, cortes a las 10, 12, 14, 16, 18 y 20, participación acumulada, acceso por PIN con administración que puede introducir datos, Congreso en 0.5.y y Senado en 0.6.y, candidaturas configurables desde el panel, despliegue Docker + Nginx Proxy Manager, versionado 0.X.y hasta 1.0.0, modo DEMO / REAL con `demo.db` separada (sección 9 bis), contadores de intentos separados para administrador y agentes.
+Cerradas: elecciones generales (Congreso y Senado), 6 mesas del Colegio Dulcinea, censo de europeas editable, cortes a las 10, 12, 14, 16, 18 y 20, participación acumulada, acceso por PIN con administración que puede introducir datos, Congreso en 0.5.y y Senado en 0.6.y, candidaturas configurables desde el panel, despliegue Docker + Nginx Proxy Manager, versionado 0.X.y hasta 1.0.0, definición de «total del colegio» y de «Provisional» (sección 7), modo DEMO / REAL con `demo.db` separada (sección 9 bis), contadores de intentos separados para administrador y agentes.
 
 Pendientes (se resuelven antes de la fase indicada):
 - Modelo exacto del Senado y lista de candidatos (antes de 0.6.y).

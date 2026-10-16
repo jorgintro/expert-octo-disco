@@ -2,6 +2,18 @@
 
 Formato de versión 0.X.y. La 1.0.0 solo se publica el día de las elecciones.
 
+## 0.4.1 — Fase 0.4: panel resumen y vista pantallazo
+
+- **Panel resumen** (`/admin/resumen`): tabla mesa × corte con acumulado, parcial y % sobre censo, fila de totales, mesas informadas por corte (`4/6`) y mesas pendientes del último corte. Se actualiza sola cada 5 s con la hora de la última actualización. Cada celda lleva a la ficha de edición.
+- **Vista `/pantallazo`** (solo administrador), pensada para capturas verticales a 360 px: sin menús, tipografía grande, colegio y tipo de elección, hora de actualización muy visible (Madrid), marca «Provisional»/«Completo». Variantes **Participación** (cortes con datos, cabeceras abreviadas, total, mesas informadas y %; cabe entera sin desplazar) y **Último corte** (acumulado, parcial y % por mesa); selector con **Recuento** preparado para la 0.5. Sondeo cada 10 s y franja roja «SIN CONEXIÓN» dentro de la captura si falla.
+- **Marca de agua «DEMO»** teselada y grande sobre todo el lienzo en modo DEMO, más sello «DEMO · DATOS DE PRUEBA»; en REAL no aparece nada con la palabra DEMO.
+- **Copiar como texto** (resumen en texto plano para WhatsApp, marcado en DEMO) y **Modo captura** (oculta los controles).
+- **Total del colegio** y «Provisional» definidos en SPEC §7: el % total es sobre el censo de las mesas informadas en ese corte.
+- **Histórico de cambios** (`/admin/historico`): auditoría legible, filtrable por mesa, actor y acción, paginada, en hora de Madrid. En DEMO incluye la captura de demo (etiquetada) y oculta la real. Nunca muestra PIN ni contraseñas (redacción defensiva).
+- **Edición de cortes** (`/admin/cortes`): cambia la hora de cada corte con validación (HH:MM, orden creciente), auditoría y aviso con confirmación si el corte ya tiene datos (reales o de demo).
+- Menú de administración reorganizado con un «Más» plegable.
+- La comprobación de arranque del build verifica además los nuevos recursos y que las pantallas nuevas exigen sesión de administrador.
+
 ## 0.3.2 — Fase 0.3, entrega 2: agentes y participación
 
 - **Acceso de agentes por PIN:** la raíz `/` es la pantalla de PIN (6 dígitos, teclado numérico) con enlace discreto al acceso de administrador. Reutiliza el CSRF de entrada, la IP real (`TRUST_PROXY`) y el contador de intentos **del ámbito PIN** (15 fallos en 5 minutos, bloqueo de 5; separado del de administrador). Un acierto no reinicia el contador de la IP. Sesión de 14 h en cookie propia `sid_agente` (HttpOnly, Secure, SameSite=Lax); revocar o regenerar el PIN, o dar de baja al agente, la invalida.
