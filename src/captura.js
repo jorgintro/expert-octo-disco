@@ -57,6 +57,10 @@ export class Captura {
       const previa = db
         .prepare('SELECT * FROM participacion WHERE mesa_id = ? AND corte_id = ?')
         .get(mesaId, corteId);
+      if (previa && previa.votantes_acumulados === votantes && previa.introducido_por_tipo === actor.tipo) {
+        // Mismo dato del mismo tipo de autor (p. ej. un reintento tras un corte de conexión): no se toca ni se audita.
+        return { id: previa.id, anterior: votantes, nuevo: votantes, cambiado: false };
+      }
       const ahora = new Date().toISOString();
       let id;
       if (previa) {
@@ -81,10 +85,34 @@ export class Captura {
         previa ? 'editar' : 'crear',
         'participacion',
         id,
-        previa ? { mesa_id: mesaId, corte_id: corteId, votantes_acumulados: previa.votantes_acumulados } : null,
-        { mesa_id: mesaId, corte_id: corteId, votantes_acumulados: votantes }
+        previa
+          ? { mesa_id: mesaId, corte_id: corteId, votantes_acumulados: previa.votantes_acumulados, introducido_por_tipo: previa.introducido_por_tipo }
+          : null,
+        { mesa_id: mesaId, corte_id: corteId, votantes_acumulados: votantes, introducido_por_tipo: actor.tipo }
       );
-      return { id, anterior: previa?.votantes_acumulados ?? null, nuevo: votantes };
+      return { id, anterior: previa?.votantes_acumulados ?? null, nuevo: votantes, cambiado: true };
+    })();
+  }
+
+  // Vacía una celda (solo el administrador; lo exige la capa de servicio). Se audita.
+  eliminarParticipacion({ mesaId, corteId, actor }) {
+    const db = this.#conexion();
+    return db.transaction(() => {
+      const previa = db
+        .prepare('SELECT * FROM participacion WHERE mesa_id = ? AND corte_id = ?')
+        .get(mesaId, corteId);
+      if (!previa) return false;
+      db.prepare('DELETE FROM participacion WHERE id = ?').run(previa.id);
+      auditar(
+        db,
+        actor,
+        'vaciar',
+        'participacion',
+        previa.id,
+        { mesa_id: mesaId, corte_id: corteId, votantes_acumulados: previa.votantes_acumulados, introducido_por_tipo: previa.introducido_por_tipo },
+        null
+      );
+      return true;
     })();
   }
 }

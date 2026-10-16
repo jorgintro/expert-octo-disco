@@ -2,6 +2,19 @@
 
 Formato de versión 0.X.y. La 1.0.0 solo se publica el día de las elecciones.
 
+## 0.3.2 — Fase 0.3, entrega 2: agentes y participación
+
+- **Acceso de agentes por PIN:** la raíz `/` es la pantalla de PIN (6 dígitos, teclado numérico) con enlace discreto al acceso de administrador. Reutiliza el CSRF de entrada, la IP real (`TRUST_PROXY`) y el contador de intentos **del ámbito PIN** (15 fallos en 5 minutos, bloqueo de 5; separado del de administrador). Un acierto no reinicia el contador de la IP. Sesión de 14 h en cookie propia `sid_agente` (HttpOnly, Secure, SameSite=Lax); revocar o regenerar el PIN, o dar de baja al agente, la invalida.
+- **Vista del agente:** solo ve y edita sus mesas activas (selector si tiene varias; cualquier otra mesa responde 403). Tarjeta del corte actual (el más reciente cuya hora ya pasó, o el primero antes de las 10:00; se puede elegir cualquier otro) con campo numérico grande y Guardar; histórico de la mesa con acumulado, parcial y % sobre censo.
+- **Validaciones en servidor** (SPEC §6): entero >= 0 y <= censo, sin bajar respecto al corte anterior ni superar el siguiente ya introducido. Un salto de más del 25 % del censo en un tramo pide confirmación en dos pasos (sin bloquear). En REAL, guardar un corte que aún no ha llegado también pide confirmación; en DEMO no.
+- **Correcciones y permisos:** cualquier agente de la mesa corrige las celdas de su mesa, salvo las introducidas por el administrador (bloqueadas para agentes con mensaje claro). Los agentes no vacían celdas. Reenviar el mismo dato es inocuo (sin cambios, sin auditoría). Todo cambio se audita en la base del modo (quién, cuándo, valor anterior y nuevo).
+- **Administrador:** nueva pantalla «Participación» (tabla mesa × corte). Cada celda lleva a una ficha para introducir, corregir o **vaciar** (con confirmación y auditoría) el dato de cualquier mesa y corte; queda registrado como «introducido por administrador». Mismas validaciones y confirmaciones.
+- **Modo:** todo lo anterior escribe en `demo.db` en DEMO y en `app.db` en REAL, con el banner visible en todas las pantallas.
+- **Mala conexión:** `public/agente.js` (mejora progresiva, sin dependencias): envío con tiempo máximo y hasta 3 intentos, mensaje claro si falla, el valor escrito no se pierde y se guarda un borrador en el dispositivo. Sin JavaScript el formulario funciona igual.
+- **`scripts/desbloquear.sh`** (+ `scripts/desbloquear.js`): libera los bloqueos por IP (administrador y PIN) desde el servidor sin depender del panel, aunque la app esté parada. Lo audita.
+- **Corregido durante la fase:** la zona de agente ya no puede eliminar la sesión de otro rol si recibe su token en su cookie.
+- La comprobación de arranque del build verifica además la pantalla de PIN y `public/agente.js`.
+
 ## 0.3.1 — Fase 0.3, entrega 1: modo DEMO / REAL
 
 - **Datos separados:** `data/app.db` (configuración + captura real) y `data/demo.db` (solo captura de prueba y su auditoría, sin claves foráneas: referencia mesas y cortes de `app.db` por id). Migraciones nuevas: `002_bloqueo_ip.sql` y `migrations/captura/001_participacion.sql` (tabla `participacion`, aplicada a ambas bases).
