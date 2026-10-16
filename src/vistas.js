@@ -68,6 +68,11 @@ export function bannerModo(modo) {
 export const pieModo = (modo) => (modo === 'DEMO' ? ' · <strong>MODO DEMO</strong>' : ' · Modo REAL');
 
 const AVISOS = {
+  candidatura_creada: 'Candidatura creada.',
+  candidatura_guardada: 'Candidatura guardada.',
+  candidatura_movida: 'Orden actualizado.',
+  candidatura_borrada: 'Candidatura borrada.',
+  logo_quitado: 'Logo quitado.',
   cortes_guardados: 'Horas de los cortes guardadas.',
   cortes_sin_cambios: 'No has cambiado ninguna hora.',
   dato_guardado: 'Dato guardado.',
@@ -106,6 +111,7 @@ export function paginaAdmin(titulo, { csrf, aviso: textoAviso, error, hojas = []
       <a href="/admin">Inicio</a>
       <a href="/admin/mesas">Mesas</a>
       <a href="/admin/agentes">Agentes</a>
+      <a href="/admin/candidaturas">Candidaturas</a>
       <a href="/admin/cortes">Cortes</a>
       <a href="/admin/historico">Histórico</a>
       <a href="/admin/modo">Modo</a>

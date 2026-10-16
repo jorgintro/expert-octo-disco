@@ -136,3 +136,32 @@ export async function loginAgente(app, pin, opciones) {
   const csrf = /name="_csrf" value="([^"]+)"/.exec(pagina.body)?.[1];
   return { res, cookie, csrf };
 }
+
+// ---- Candidaturas (configuración) ----
+export function insertarCandidaturas(db, lista) {
+  const siguiente = () => db.prepare("SELECT COALESCE(MAX(orden), 0) + 1 AS n FROM candidatura WHERE eleccion = 'congreso'").get().n;
+  return lista.map(({ nombre, siglas = '', color = '#546e7a', destacada = 0, activa = 1 }) =>
+    Number(
+      db
+        .prepare('INSERT INTO candidatura (nombre, siglas, orden, destacada, activa, color) VALUES (?, ?, ?, ?, ?, ?)')
+        .run(nombre, siglas, siguiente(), destacada, activa, color).lastInsertRowid
+    )
+  );
+}
+
+// Candidaturas de Madrid de ejemplo: 5 destacadas + resto (para pruebas y capturas).
+export const CANDIDATURAS_MADRID = [
+  { nombre: 'Partido Popular', siglas: 'PP', color: '#1d84ce', destacada: 1 },
+  { nombre: 'Partido Socialista Obrero Español', siglas: 'PSOE', color: '#e30613', destacada: 1 },
+  { nombre: 'VOX', siglas: 'VOX', color: '#63be21', destacada: 1 },
+  { nombre: 'Frente Amplio', siglas: 'FA', color: '#f6a800', destacada: 1 },
+  { nombre: 'Podemos', siglas: 'PODEMOS', color: '#6b2c91', destacada: 1 },
+  { nombre: 'Partido Animalista', siglas: 'PACMA', color: '#8bc34a' },
+  { nombre: 'Escaños en Blanco', siglas: 'EB', color: '#9e9e9e' },
+  { nombre: 'Recortes Cero', siglas: 'RC', color: '#00796b' },
+];
+
+// Imágenes mínimas válidas (por sus primeros bytes) para probar logos.
+export const PNG_1X1 = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
+export const JPEG_MIN = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(40, 1)]);
+export const WEBP_MIN = Buffer.concat([Buffer.from('RIFF', 'latin1'), Buffer.from([0x20, 0, 0, 0]), Buffer.from('WEBP', 'latin1'), Buffer.alloc(30, 2)]);
