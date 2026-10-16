@@ -1,0 +1,26 @@
+services:
+  tiroriro:
+    build: .
+    container_name: tiroriro
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      TZ: Europe/Madrid
+      PORT: "3000"
+      DATA_DIR: /app/data
+    volumes:
+      - ./data:/app/data
+    # El puerto NO se publica a Internet. Nginx Proxy Manager llega al
+    # contenedor por la red Docker compartida (tiroriro:3000).
+    expose:
+      - "3000"
+    networks:
+      - npm_default
+    # Alternativa (solo si NPM corre en el host y no en un contenedor):
+    # elimina la red y publica el puerto solo en local.
+    # ports:
+    #   - "127.0.0.1:3000:3000"
+
+networks:
+  npm_default:
+    external: true
