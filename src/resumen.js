@@ -1,14 +1,14 @@
 // Resumen de participación del colegio: tabla mesa x corte, totales, mesas pendientes y texto para
 // WhatsApp. Funciones puras (sin acceso a datos ni al reloj).
-import { construirHistorial, formatoPorcentaje, porcentajeSobreCenso } from './participacion.js';
+import { VACIO, construirHistorial, formatoPorcentaje, porcentajeSobreCenso } from './participacion.js';
 
 export const TIPO_ELECCION = 'Elecciones Generales';
 
-// Variantes de la vista /pantallazo. El recuento llega en la 0.5: el selector ya lo contempla.
+// Variantes de la vista /pantallazo.
 export const VARIANTES = [
   { id: 'participacion', etiqueta: 'Participación', disponible: true },
   { id: 'ultimo', etiqueta: 'Último corte', disponible: true },
-  { id: 'recuento', etiqueta: 'Recuento', disponible: false },
+  { id: 'recuento', etiqueta: 'Recuento', disponible: true },
 ];
 export const VARIANTE_POR_DEFECTO = 'participacion';
 
@@ -97,7 +97,7 @@ export function textoWhatsApp({ resumen, variante, colegio, modo, actualizado })
       const ultimaConDato = [...celdas].reverse().find((c) => !c.vacio);
       lineas.push(
         ultimaConDato
-          ? `${mesa.codigo}: ${celdas.map((c) => (c.vacio ? '—' : c.acumulado)).join(' → ')} · ${formatoPorcentaje(ultimaConDato.porcentaje)}`
+          ? `${mesa.codigo}: ${celdas.map((c) => (c.vacio ? VACIO : c.acumulado)).join(' → ')} · ${formatoPorcentaje(ultimaConDato.porcentaje)}`
           : `${mesa.codigo}: sin datos`
       );
     }

@@ -1,10 +1,11 @@
 // Vistas del resumen: panel de administración y lienzo de la vista /pantallazo.
-import { formatoPorcentaje } from './participacion.js';
+import { VACIO, formatoPorcentaje } from './participacion.js';
 import { TIPO_ELECCION, VARIANTES } from './resumen.js';
-import { crudo, html } from './vistas.js';
+import { tablaRecuento } from './vistasRecuento.js';
+import { crudo, html, recurso } from './vistas.js';
 
 const corto = (p) => formatoPorcentaje(p).replace(' %', '%');
-const SCRIPT = html`<script src="/resumen.js" defer></script>`;
+const SCRIPT = html`<script src="${recurso('/resumen.js')}" defer></script>`;
 
 // Marcador del sondeo: resumen.js lo busca para refrescar la página sola.
 const sondeo = (ms) => html`<div id="sondeo" data-intervalo="${ms}" hidden></div>`;
@@ -23,7 +24,7 @@ const sello = (resumen) => {
 // ---------- Panel de administración ----------
 function celdaPanel(c, enlace) {
   return c.vacio
-    ? html`<td class="num vacia"><a class="celda" href="${enlace}">—</a></td>`
+    ? html`<td class="num vacia"><a class="celda vacia" href="${enlace}">${VACIO}</a></td>`
     : html`<td class="num"><a class="celda" href="${enlace}"><strong>${c.acumulado}</strong><small>+${c.parcial}</small><small>${corto(c.porcentaje)}</small></a></td>`;
 }
 
@@ -50,7 +51,7 @@ export function panelResumen({ resumen, hora, fecha }) {
   </tbody>
   <tfoot><tr><th class="fija">Total</th>${totales.map((t) =>
     t.informadas === 0
-      ? html`<td class="num vacia">—</td>`
+      ? html`<td class="num vacia">${VACIO}</td>`
       : html`<td class="num"><strong>${t.acumulado}</strong><small>+${t.parcial}</small><small>${corto(t.porcentaje)}</small></td>`
   )}</tr></tfoot>
 </table></div>
@@ -69,7 +70,7 @@ function tablaParticipacion(resumen) {
     ${resumen.mesas.map(
       ({ mesa, historial }) => html`<tr><th scope="row">${mesa.codigo}</th>${idx.map((i) => {
         const c = historial[i];
-        return c.vacio ? html`<td class="vacia">—</td>` : html`<td><span class="v">${c.acumulado}</span><span class="p">${corto(c.porcentaje)}</span></td>`;
+        return c.vacio ? html`<td class="vacia">${VACIO}</td>` : html`<td><span class="v">${c.acumulado}</span><span class="p">${corto(c.porcentaje)}</span></td>`;
       })}</tr>`
     )}
   </tbody>
@@ -100,21 +101,31 @@ function tablaUltimo(resumen) {
 </table>`;
 }
 
-export function lienzoPantallazo({ colegio, resumen, variante, modo, hora, fecha, texto }) {
+const selloRecuento = (r) =>
+  r.provisional
+    ? html`<p class="sello provisional">PROVISIONAL · ${r.cerradas}/${r.totalMesas} mesas escrutadas</p>`
+    : html`<p class="sello completo">COMPLETO · ${r.cerradas}/${r.totalMesas} mesas escrutadas</p>`;
+
+export function lienzoPantallazo({ colegio, resumen, resumenRecuento = null, variante, modo, hora, fecha, texto }) {
   const demo = modo === 'DEMO';
+  const esRecuento = variante.id === 'recuento';
   return html`<div class="lienzo" id="lienzo">
   ${demo ? html`<div class="marca-agua" aria-hidden="true"><span>DEMO</span></div>` : ''}
   <header class="lienzo-cabecera">
     <h1>${colegio}</h1>
-    <p class="subtitulo-lienzo">${TIPO_ELECCION} · ${variante.etiqueta}</p>
+    <p class="subtitulo-lienzo">${TIPO_ELECCION} · ${esRecuento ? 'Recuento del Congreso' : variante.etiqueta}</p>
     <p class="hora-pantallazo">Actualizado <time id="hora-actualizacion">${hora}</time></p>
     <p class="fecha-pantallazo">${fecha} · hora de Madrid</p>
   </header>
   ${sinConexion(hora)}
   ${demo ? html`<p class="sello demo">DEMO · DATOS DE PRUEBA</p>` : ''}
-  ${sello(resumen)}
-  ${variante.id === 'ultimo' ? tablaUltimo(resumen) : tablaParticipacion(resumen)}
-  ${resumen.provisional && resumen.indiceUltimo >= 0 ? html`<p class="nota-lienzo">TOTAL: % sobre el censo de las mesas informadas.</p>` : ''}
+  ${esRecuento ? selloRecuento(resumenRecuento) : sello(resumen)}
+  ${esRecuento ? tablaRecuento(resumenRecuento) : variante.id === 'ultimo' ? tablaUltimo(resumen) : tablaParticipacion(resumen)}
+  ${esRecuento
+    ? html`<p class="nota-lienzo">% sobre votos válidos (candidaturas + blancos). Solo mesas cerradas.</p>`
+    : resumen.provisional && resumen.indiceUltimo >= 0
+      ? html`<p class="nota-lienzo">TOTAL: % sobre el censo de las mesas informadas.</p>`
+      : ''}
 </div>
 <section class="controles" aria-label="Controles de la captura">
   <nav class="pildoras" aria-label="Variante">

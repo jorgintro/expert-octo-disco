@@ -9,6 +9,7 @@ import { bannerModo, pieModo } from './vistas.js';
 import { confiarEnProxy } from './proxy.js';
 import rutasAdmin from './rutas/admin.js';
 import rutasAgente from './rutas/agente.js';
+import rutasLogos from './rutas/logos.js';
 
 export function crearApp({ db, config, logger = false, reloj = Date.now }) {
   const app = Fastify({ logger, trustProxy: confiarEnProxy(config.trustProxy) });
@@ -46,11 +47,20 @@ export function crearApp({ db, config, logger = false, reloj = Date.now }) {
 
   app.register(fastifyCookie);
   app.register(fastifyFormbody);
-  app.register(fastifyStatic, { root: path.join(raiz, 'public'), wildcard: false });
+  // Estáticos: siempre se revalidan (no-cache) con ETag, así un despliegue nunca deja CSS/JS viejos;
+  // además van con ?v=<versión> en la URL.
+  app.register(fastifyStatic, {
+    root: path.join(raiz, 'public'),
+    wildcard: false,
+    etag: true,
+    cacheControl: false,
+    setHeaders: (reply) => reply.header('Cache-Control', 'no-cache'),
+  });
 
   app.get('/healthz', async (req) => ({ estado: 'ok', modo: req.modo.modo }));
   app.get('/version', async (req) => ({ version, modo: req.modo.modo }));
 
+  app.register(rutasLogos);
   app.register(rutasAgente);
   app.register(rutasAdmin);
 

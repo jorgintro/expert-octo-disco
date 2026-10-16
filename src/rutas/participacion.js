@@ -1,4 +1,4 @@
-import { construirHistorial } from '../participacion.js';
+import { VACIO, construirHistorial } from '../participacion.js';
 import { datosDeMesa, guardarDato, vaciarDato } from '../servicioParticipacion.js';
 import { html, paginaAdmin, responder } from '../vistas.js';
 import { autorDe, bloqueConfirmar, formularioDato, tablaHistorial } from '../vistasDato.js';
@@ -26,7 +26,7 @@ export default async function rutasParticipacion(app) {
       <th scope="row">${m.codigo}${m.activa ? '' : html`<br><span class="nota">de baja</span>`}</th>
       ${cortes.map((c) => {
         const f = celdas.get(`${m.id}:${c.id}`);
-        return html`<td class="num"><a class="celda" href="/admin/participacion/${m.id}/${c.id}">${f ? f.votantes_acumulados : '—'}${f?.introducido_por_tipo === 'admin' ? html` <span class="marca-admin" title="Introducido por el administrador">A</span>` : ''}</a></td>`;
+        return html`<td class="num${f ? '' : ' vacia'}"><a class="celda${f ? '' : ' vacia'}" href="/admin/participacion/${m.id}/${c.id}"><span class="dato">${f ? f.votantes_acumulados : VACIO}</span>${f?.introducido_por_tipo === 'admin' ? html`<span class="marca-admin" title="Introducido por el administrador">A</span>` : ''}</a></td>`;
       })}
     </tr>`
     )}

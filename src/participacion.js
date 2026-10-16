@@ -61,7 +61,10 @@ export const corteHaLlegado = (corte, horaActual) => corte.hora <= horaActual;
 // Porcentaje sobre censo con un decimal (o null si el censo es 0).
 export const porcentajeSobreCenso = (acumulado, censo) => (censo > 0 ? Math.round((acumulado * 1000) / censo) / 10 : null);
 
-export const formatoPorcentaje = (p) => (p === null ? '—' : `${String(p.toFixed(1)).replace('.', ',')} %`);
+// Marcador de «sin dato» (en las tablas se pinta en gris y sin enlace subrayado).
+export const VACIO = '–';
+
+export const formatoPorcentaje = (p) => (p === null ? VACIO : `${String(p.toFixed(1)).replace('.', ',')} %`);
 
 // Histórico de una mesa: una fila por corte con acumulado, parcial (respecto al último corte anterior
 // ya introducido, o 0) y % sobre censo.

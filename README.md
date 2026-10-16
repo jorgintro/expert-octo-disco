@@ -147,7 +147,7 @@ Las fechas están en UTC. Si el contenedor no está arrancado, usa `docker compo
 
 - **Resumen** (panel → *Resumen*): tabla mesa × corte con acumulado, parcial y %; totales; `n/N` mesas informadas por corte. Se actualiza sola cada 5 s (muestra la hora de la última actualización). Las mesas de baja no cuentan. El % del **total** es sobre el censo de las mesas informadas en ese corte.
 - **Pantallazo** (panel → *Pantallazo*, o `/pantallazo`): vista limpia para enviar por WhatsApp.
-  1. Elige la variante: **Participación** (mesas × cortes con datos) o **Último corte** (acumulado, parcial y % por mesa). *Recuento* llegará en la 0.5.
+  1. Elige la variante: **Participación** (mesas × cortes con datos) o **Último corte** (acumulado, parcial y % por mesa). **Recuento** (mesas escrutadas, destacadas con barras, «Otros», blancos, nulos y total).
   2. Para una captura limpia, pulsa **Modo captura** (oculta los controles; toca el título para volver) y haz el pantallazo en vertical.
   3. O pulsa **Copiar como texto** y pega en WhatsApp (el texto se puede revisar en «Ver el texto que se copia»).
   - Pone «PROVISIONAL» mientras al último corte con datos le falten mesas, y la hora de actualización (Madrid) en grande.
@@ -155,6 +155,14 @@ Las fechas están en UTC. Si el contenedor no está arrancado, usa `docker compo
   - Si se pierde la conexión, aparece una franja roja «SIN CONEXIÓN · los datos son de las HH:MM:SS» arriba de la captura.
 - **Histórico** (panel → Más → *Histórico*): auditoría con hora de Madrid, filtrable por mesa, actor (agente, administrador, sistema) y acción; 25 por página. En REAL muestra lo de `app.db`; en DEMO, la configuración y la captura de la demo (con etiqueta DEMO). Nunca muestra PIN ni contraseñas.
 - **Cortes** (panel → Más → *Cortes*): cambia la hora de cada corte (HH:MM, en orden creciente). Si el corte ya tiene datos —reales o de demo— pide confirmación antes: los datos no cambian, solo la hora a la que se refieren. Es configuración compartida por DEMO y REAL.
+
+## Recuento del Congreso y candidaturas (0.5)
+
+1. **Candidaturas** (panel → Más → *Candidaturas*): crea todas las de la circunscripción de Madrid con su posición en el orden de la Junta Electoral Central, marca las destacadas (PP, PSOE, VOX, Frente Amplio, Podemos), elige color y sube el logo (PNG, JPEG o WebP). La estructura se bloquea al activar el recuento.
+2. **Abrir el recuento** (panel → *Recuento* → *Abrir*): en REAL pide antes la participación informada de todas las mesas en el último corte y avisa si aún no son las 20:00. Se puede cerrar y reabrir; los borradores se conservan.
+3. **Agentes**: en su mesa aparece «Abrir el recuento». Con **+** y **−** suman o restan un voto a la candidatura que se canta; «Teclear números» permite escribir la cifra. Indican el total de votantes; la barra muestra si la suma cuadra. El borrador se guarda solo; «Cerrar mesa» pide confirmación y bloquea la edición.
+4. **Administrador**: en *Recuento* ve resultados y la matriz candidaturas × mesas; tocando una celda abre la ficha de la mesa para introducir, corregir, cerrar o reabrir.
+5. **Pantallazo → Recuento** y **Copiar como texto** para WhatsApp. En DEMO todo va a `demo.db` y lleva marca DEMO.
 
 ## Uso con agentes y participación (0.3)
 

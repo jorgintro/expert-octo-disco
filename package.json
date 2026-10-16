@@ -1,6 +1,6 @@
 {
   "name": "tiroriro",
-  "version": "0.4.1",
+  "version": "0.5.1",
   "description": "Participación y recuento para colegio electoral (piloto Colegio Dulcinea)",
   "private": true,
   "type": "module",

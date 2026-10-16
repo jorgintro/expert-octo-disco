@@ -11,6 +11,7 @@ export function leerFiltros(query = {}) {
     actor: Object.hasOwn(ACTORES, query.actor) ? query.actor : null,
     accion: /^[a-z_]{1,40}$/.test(String(query.accion ?? '')) ? query.accion : null,
     pagina: Math.max(1, entero(query.pagina) ?? 1),
+    auto: query.auto === '1',
   };
 }
 
@@ -48,7 +49,9 @@ const compacto = (v) => {
 };
 
 // Frase legible del cambio; si no se reconoce, el JSON (redactado y acortado).
-export function describir(fila, { mesas, cortes }) {
+const sinRellenar = (v) => (v === null || v === undefined ? 'sin rellenar' : v);
+
+export function describir(fila, { mesas, cortes, candidaturas = new Map() }) {
   const antes = leerJson(fila.valor_anterior);
   const despues = leerJson(fila.valor_nuevo);
   if (fila.entidad === 'participacion') {
@@ -57,6 +60,18 @@ export function describir(fila, { mesas, cortes }) {
     const por = ref.introducido_por_tipo === 'admin' ? 'administrador' : ref.introducido_por_tipo === 'agente' ? 'agente' : null;
     const valor = (v) => (v === null || v === undefined ? '(vacío)' : v.votantes_acumulados);
     return `${donde}: ${valor(antes)} → ${valor(despues)}${por && despues ? ` (introducido por ${por})` : ''}`;
+  }
+  if (fila.entidad === 'recuento') {
+    const ref = despues ?? antes ?? {};
+    const partes = [];
+    for (const [campo, nombre] of [['votantes', 'Total de votantes'], ['blancos', 'Blancos'], ['nulos', 'Nulos']]) {
+      if (despues && campo in despues) partes.push(`${nombre} ${sinRellenar(antes?.[campo])} → ${sinRellenar(despues[campo])}`);
+    }
+    for (const [id, v] of Object.entries(despues?.votos ?? {})) {
+      partes.push(`${candidaturas.get(Number(id)) ?? `candidatura ${id}`} ${sinRellenar(antes?.votos?.[id])} → ${sinRellenar(v)}`);
+    }
+    if (despues && 'estado' in despues) partes.push(`estado ${antes?.estado ?? 'sin iniciar'} → ${despues.estado}`);
+    return `Mesa ${mesas.get(ref.mesa_id) ?? ref.mesa_id}: ${partes.join(', ') || '—'}`;
   }
   if (fila.entidad === 'mesa' && antes && despues && typeof antes === 'object') {
     const cambios = Object.keys(despues).filter((k) => antes[k] !== despues[k]).map((k) => `${k} ${compacto(antes[k])} → ${compacto(despues[k])}`);
@@ -68,10 +83,14 @@ export function describir(fila, { mesas, cortes }) {
   return `${compacto(antes)} → ${compacto(despues)}`;
 }
 
+// Los autoguardados del recuento son cientos de filas de borrador: se ocultan salvo que se pidan.
+export const filtrosEfectivos = (filtros) => ({ ...filtros, excluirAcciones: filtros.auto ? [] : ['autoguardar'] });
+
 // Combina la auditoría de configuración (app.db) con la de captura del modo vigente:
 //  - REAL: todo está en app.db.
 //  - DEMO: configuración de app.db (sin la captura real) + captura de prueba de demo.db.
-export function consultarHistorico({ db, captura, filtros }) {
+export function consultarHistorico({ db, captura, filtros: filtrosUsuario }) {
+  const filtros = filtrosEfectivos(filtrosUsuario);
   const enDemo = captura.destino === 'demo';
   const excluir = enDemo ? ENTIDADES_CAPTURA : [];
   const limite = filtros.pagina * POR_PAGINA;
@@ -86,7 +105,7 @@ export function consultarHistorico({ db, captura, filtros }) {
   }
   filas.sort((a, b) => (a.fecha === b.fecha ? (a.origen < b.origen ? 1 : -1) : a.fecha < b.fecha ? 1 : -1));
   const paginas = Math.max(1, Math.ceil(total / POR_PAGINA));
-  const pagina = Math.min(filtros.pagina, paginas);
+  const pagina = Math.min(filtrosUsuario.pagina, paginas);
   const desde = (pagina - 1) * POR_PAGINA;
   return { filas: filas.slice(desde, desde + POR_PAGINA), total, pagina, paginas, acciones };
 }
@@ -96,6 +115,7 @@ export function contextoNombres(db) {
   return {
     mesas: new Map(db.prepare('SELECT id, codigo FROM mesa').all().map((m) => [m.id, m.codigo])),
     cortes: new Map(db.prepare('SELECT id, hora FROM corte').all().map((c) => [c.id, c.hora])),
+    candidaturas: new Map(db.prepare('SELECT id, nombre, siglas FROM candidatura').all().map((c) => [c.id, c.siglas || c.nombre])),
     agentes: new Map(db.prepare('SELECT id, nombre FROM agente').all().map((a) => [a.id, a.nombre])),
     admins: new Map(db.prepare('SELECT id, usuario FROM admin').all().map((a) => [a.id, a.usuario])),
   };

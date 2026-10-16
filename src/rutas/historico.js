@@ -8,6 +8,8 @@ const ACCIONES = {
   cambiar_modo: 'Cambio de modo (manual)', cambio_modo: 'Cambio de modo (automático)',
   anular_override_modo: 'Anular modo manual', reiniciar_demo: 'Reiniciar demo', desbloquear_ip: 'Desbloquear IP',
   cambiar_password: 'Cambiar contraseña', seed: 'Carga inicial',
+  guardar: 'Guardar borrador', autoguardar: 'Autoguardado', cerrar: 'Cerrar mesa', reabrir: 'Reabrir mesa',
+  abrir_recuento: 'Abrir el recuento', cerrar_recuento: 'Cerrar el recuento', borrar: 'Borrar',
 };
 const etiquetaAccion = (a) => ACCIONES[a] ?? a;
 
@@ -26,6 +28,7 @@ export default async function rutasHistorico(app) {
       if (filtros.mesa) q.set('mesa', filtros.mesa);
       if (filtros.actor) q.set('actor', filtros.actor);
       if (filtros.accion) q.set('accion', filtros.accion);
+      if (filtros.auto) q.set('auto', '1');
       if (pagina > 1) q.set('pagina', pagina);
       const s = q.toString();
       return `/admin/historico${s ? `?${s}` : ''}`;
@@ -47,6 +50,7 @@ export default async function rutasHistorico(app) {
     <option value="">Todas</option>
     ${acciones.map((a) => html`<option value="${a}"${a === filtros.accion ? ' selected' : ''}>${etiquetaAccion(a)}</option>`)}
   </select>
+  <label class="casilla"><input type="checkbox" name="auto" value="1"${filtros.auto ? ' checked' : ''}> Incluir los autoguardados del recuento</label>
   <button type="submit" class="boton">Filtrar</button>
   <a href="/admin/historico" class="boton boton-sec">Quitar filtros</a>
 </form>
@@ -55,7 +59,9 @@ ${h.filas.length === 0 ? html`<p>No hay registros con estos filtros.</p>` : ''}
 ${h.filas.map(
   (f) => html`<article class="entrada${f.origen === 'demo' ? ' entrada-demo' : ''}">
   <p class="entrada-cab"><time>${formatearMadrid(f.fecha)}</time>${f.origen === 'demo' ? html` <span class="etiqueta-demo">DEMO</span>` : ''}</p>
-  <p><strong>${etiquetaAccion(f.accion)}</strong> · ${f.entidad} · ${nombreActor(f, nombres)}</p>
+  <p class="entrada-accion">${etiquetaAccion(f.accion)}</p>
+  <p class="entrada-meta">${nombreActor(f, nombres)}</p>
+  <p class="entrada-meta">${f.entidad}</p>
   <p class="detalle">${describir(f, nombres)}</p>
 </article>`
 )}

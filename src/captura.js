@@ -1,4 +1,4 @@
-// ÚNICA capa con SQL sobre las tablas de captura (participación; recuento llegará en la 0.5).
+// ÚNICA capa con SQL sobre las tablas de captura (participación y recuento del Congreso).
 // Las rutas nunca reciben una conexión: reciben un objeto `Captura` que el gestor de datos ya ha
 // atado al destino correcto según el modo (DEMO -> demo.db, REAL -> app.db). Así, en DEMO no existe
 // ningún camino de código hacia las tablas de captura reales.
@@ -13,6 +13,26 @@ export class ModoCambiadoError extends Error {
     this.name = 'ModoCambiadoError';
   }
 }
+
+// Otro dispositivo guardó esta mesa después de que se cargara el formulario.
+export class ConflictoVersionError extends Error {
+  constructor(versionActual) {
+    super('Esta mesa ha sido modificada desde otro dispositivo.');
+    this.name = 'ConflictoVersionError';
+    this.versionActual = versionActual;
+  }
+}
+
+const ELECCION = 'congreso';
+
+// Foto de lo introducido en una mesa para comparar y auditar (solo valores; sin rellenar = null).
+const foto = (cab, votos) => ({
+  estado: cab?.estado ?? null,
+  votantes: cab?.votantes ?? null,
+  blancos: cab?.votos_blancos ?? null,
+  nulos: cab?.votos_nulos ?? null,
+  votos: Object.fromEntries([...votos.entries()].map(([id, v]) => [String(id), v])),
+});
 
 export class Captura {
   #gestor;
@@ -94,6 +114,132 @@ export class Captura {
     })();
   }
 
+  // ---- Recuento del Congreso ----
+  // «Sin rellenar» (NULL / sin fila) se distingue de «0».
+  obtenerRecuento(mesaId) {
+    const db = this.#conexion();
+    const cab = db.prepare('SELECT * FROM recuento_mesa WHERE mesa_id = ? AND eleccion = ?').get(mesaId, ELECCION) ?? null;
+    const votos = new Map(
+      db.prepare('SELECT candidatura_id, votos FROM recuento_voto WHERE mesa_id = ?').all(mesaId).map((r) => [r.candidatura_id, r.votos])
+    );
+    return { cab, votos };
+  }
+
+  // Todas las mesas con recuento: Map mesaId -> { cab, votos: Map candidaturaId -> votos }.
+  listarRecuentos() {
+    const db = this.#conexion();
+    const mapa = new Map();
+    for (const cab of db.prepare('SELECT * FROM recuento_mesa WHERE eleccion = ?').all(ELECCION)) {
+      mapa.set(cab.mesa_id, { cab, votos: new Map() });
+    }
+    for (const v of db.prepare('SELECT mesa_id, candidatura_id, votos FROM recuento_voto').all()) {
+      mapa.get(v.mesa_id)?.votos.set(v.candidatura_id, v.votos);
+    }
+    return mapa;
+  }
+
+  // Guarda lo introducido en una mesa (reemplaza los campos indicados; null = sin rellenar) y audita
+  // SOLO lo que cambia. `versionEsperada` es la que tenía el formulario (0 si la mesa aún no existe):
+  // si otro dispositivo guardó antes, lanza ConflictoVersionError sin escribir nada.
+  // `estado` es el estado final ('borrador' | 'cerrado'). No valida reglas de negocio (suma, censo...):
+  // eso lo hace la capa de servicio antes de llamar aquí.
+  guardarRecuento({ mesaId, valores, estado, versionEsperada, actor, automatico = false }) {
+    const db = this.#conexion();
+    return db.transaction(() => {
+      const previa = this.obtenerRecuento(mesaId);
+      const versionActual = previa.cab?.version ?? 0;
+      if (versionActual !== versionEsperada) throw new ConflictoVersionError(versionActual);
+
+      const antes = foto(previa.cab, previa.votos);
+      const votosNuevos = new Map(previa.votos);
+      for (const [id, v] of valores.votos) {
+        if (v === null || v === undefined) votosNuevos.delete(id);
+        else votosNuevos.set(id, v);
+      }
+      const despues = {
+        estado,
+        votantes: valores.votantes === undefined ? antes.votantes : valores.votantes,
+        blancos: valores.blancos === undefined ? antes.blancos : valores.blancos,
+        nulos: valores.nulos === undefined ? antes.nulos : valores.nulos,
+        votos: Object.fromEntries([...votosNuevos.entries()].map(([id, v]) => [String(id), v])),
+      };
+
+      // Diferencias (solo estas se auditan)
+      const antesD = { mesa_id: mesaId };
+      const despuesD = { mesa_id: mesaId };
+      let valoresCambian = false;
+      for (const campo of ['votantes', 'blancos', 'nulos']) {
+        if (antes[campo] !== despues[campo]) {
+          antesD[campo] = antes[campo];
+          despuesD[campo] = despues[campo];
+          valoresCambian = true;
+        }
+      }
+      const idsVotos = new Set([...Object.keys(antes.votos), ...Object.keys(despues.votos)]);
+      for (const id of idsVotos) {
+        const a = antes.votos[id] ?? null;
+        const d = despues.votos[id] ?? null;
+        if (a !== d) {
+          (antesD.votos ??= {})[id] = a;
+          (despuesD.votos ??= {})[id] = d;
+          valoresCambian = true;
+        }
+      }
+      const estadoCambia = antes.estado !== despues.estado;
+      if (estadoCambia) {
+        antesD.estado = antes.estado;
+        despuesD.estado = despues.estado;
+      }
+      if (!valoresCambian && !estadoCambia && previa.cab) {
+        return { cambiado: false, version: versionActual, actualizadoEn: previa.cab.actualizado_en };
+      }
+
+      // La autoría solo cambia si cambian valores (cerrar o reabrir sin tocar números no la cambia).
+      const autor = valoresCambian || !previa.cab
+        ? { tipo: actor.tipo, id: actor.id ?? null }
+        : { tipo: previa.cab.introducido_por_tipo, id: previa.cab.introducido_por_id };
+      const version = versionActual + 1;
+      const ahora = new Date().toISOString();
+      db.prepare(
+        `INSERT INTO recuento_mesa (mesa_id, eleccion, votantes, votos_blancos, votos_nulos, estado, version,
+           introducido_por_tipo, introducido_por_id, actualizado_en)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(mesa_id, eleccion) DO UPDATE SET votantes = excluded.votantes, votos_blancos = excluded.votos_blancos,
+           votos_nulos = excluded.votos_nulos, estado = excluded.estado, version = excluded.version,
+           introducido_por_tipo = excluded.introducido_por_tipo, introducido_por_id = excluded.introducido_por_id,
+           actualizado_en = excluded.actualizado_en`
+      ).run(mesaId, ELECCION, despues.votantes, despues.blancos, despues.nulos, estado, version, autor.tipo, autor.id, ahora);
+      const borrar = db.prepare('DELETE FROM recuento_voto WHERE mesa_id = ? AND candidatura_id = ?');
+      const poner = db.prepare(
+        'INSERT INTO recuento_voto (mesa_id, candidatura_id, votos) VALUES (?, ?, ?) ON CONFLICT(mesa_id, candidatura_id) DO UPDATE SET votos = excluded.votos'
+      );
+      for (const [id, v] of valores.votos) {
+        if (v === null || v === undefined) borrar.run(mesaId, id);
+        else poner.run(mesaId, id, v);
+      }
+
+      const accion = estado === 'cerrado' && antes.estado !== 'cerrado' ? 'cerrar' : antes.estado === 'cerrado' ? 'editar' : automatico ? 'autoguardar' : 'guardar';
+      auditar(db, actor, accion, 'recuento', mesaId, previa.cab ? antesD : null, despuesD);
+      return { cambiado: true, version, actualizadoEn: ahora };
+    })();
+  }
+
+  // Reabre una mesa cerrada: vuelve a borrador conservando los datos (y su autoría).
+  reabrirRecuento({ mesaId, versionEsperada, actor }) {
+    const db = this.#conexion();
+    return db.transaction(() => {
+      const { cab } = this.obtenerRecuento(mesaId);
+      const versionActual = cab?.version ?? 0;
+      if (versionActual !== versionEsperada) throw new ConflictoVersionError(versionActual);
+      if (!cab || cab.estado !== 'cerrado') return { cambiado: false, version: versionActual };
+      const version = versionActual + 1;
+      const ahora = new Date().toISOString();
+      db.prepare("UPDATE recuento_mesa SET estado = 'borrador', version = ?, actualizado_en = ? WHERE mesa_id = ? AND eleccion = ?").run(version, ahora, mesaId, ELECCION);
+      auditar(db, actor, 'reabrir', 'recuento', mesaId, { mesa_id: mesaId, estado: 'cerrado' }, { mesa_id: mesaId, estado: 'borrador' });
+      return { cambiado: true, version, actualizadoEn: ahora };
+    })();
+  }
+
   // Auditoría de la base de este destino (en demo.db, solo la de captura de prueba).
   auditoria(filtros, { limite }) {
     return listarAuditoria(this.#conexion(), filtros, { limite });
@@ -131,4 +277,9 @@ export class Captura {
 // Cuántos datos hay en cada corte de una base de captura: Map corteId -> n. Solo lectura.
 export function contarPorCorte(db) {
   return new Map(db.prepare('SELECT corte_id, COUNT(*) AS n FROM participacion GROUP BY corte_id').all().map((f) => [f.corte_id, f.n]));
+}
+
+// Cuántas filas de votos tiene cada candidatura en una base de captura: Map candidaturaId -> n. Solo lectura.
+export function contarPorCandidatura(db) {
+  return new Map(db.prepare('SELECT candidatura_id, COUNT(*) AS n FROM recuento_voto GROUP BY candidatura_id').all().map((f) => [f.candidatura_id, f.n]));
 }

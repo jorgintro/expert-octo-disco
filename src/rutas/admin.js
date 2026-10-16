@@ -7,9 +7,11 @@ import { borrarSesion, borrarSesionesDeActor, buscarSesion, crearSesion, DURACIO
 import { aviso, html, pagina, paginaAdmin, responder } from '../vistas.js';
 import rutasAgentes from './agentes.js';
 import rutasBloqueos from './bloqueos.js';
+import rutasCandidaturas from './candidaturas.js';
 import rutasMesas from './mesas.js';
 import rutasParticipacion from './participacion.js';
 import rutasModo from './modo.js';
+import rutasRecuento from './recuento.js';
 import rutasResumen from './resumen.js';
 import rutasHistorico from './historico.js';
 import rutasCortes from './cortes.js';
@@ -103,7 +105,7 @@ export default async function rutasAdmin(app) {
       if (sesion.actor_tipo !== 'admin') {
         return responder(reply, pagina('Acceso denegado', '<h1>Acceso denegado</h1><p>Esta zona es solo para administración.</p>'), 403);
       }
-      if (req.method === 'POST' && !textoSeguro(req.body?._csrf ?? '', sesion.csrf)) {
+      if (['POST', 'PUT', 'DELETE'].includes(req.method) && !textoSeguro(req.body?._csrf ?? req.headers['x-csrf-token'] ?? '', sesion.csrf)) {
         return responder(
           reply,
           pagina('Petición no válida', '<h1>Petición no válida</h1><p>Recarga la página e inténtalo de nuevo.</p>'),
@@ -196,6 +198,8 @@ export default async function rutasAdmin(app) {
     await priv.register(rutasHistorico);
     await priv.register(rutasCortes);
     await priv.register(rutasParticipacion);
+    await priv.register(rutasCandidaturas);
+    await priv.register(rutasRecuento);
     await priv.register(rutasModo);
     await priv.register(rutasBloqueos);
   });

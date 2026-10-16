@@ -503,7 +503,7 @@ test('el JavaScript del cliente se sirve como recurso propio (CSP) y las página
   assert.match(js.body, /AbortController/);
   assert.match(js.headers['content-security-policy'], /script-src 'self'/);
   const pagina = await getAgente(e.app, `/agente/mesa/${e.mesaId('4-2-A')}`, e.cookie);
-  assert.match(pagina.body, /<script src="\/agente\.js" defer><\/script>/);
+  assert.match(pagina.body, /<script src="\/agente\.js\?v=[\d.]+" defer><\/script>/);
   assert.ok(!/<script(?![^>]*src=)/.test(pagina.body), 'sin scripts en línea');
   assert.match(pagina.body, /id="estado-envio"[^>]*aria-live="polite"/);
 });

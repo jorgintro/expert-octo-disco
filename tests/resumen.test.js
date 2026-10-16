@@ -64,10 +64,10 @@ test('solo cuentan las mesas que se pasan (las de baja no) aunque haya datos suy
   assert.equal(r.totales[0].acumulado, 100);
 });
 
-test('variantes: el recuento está preparado pero no disponible; una variante desconocida cae en participación', () => {
-  assert.deepEqual(VARIANTES.map((v) => [v.id, v.disponible]), [['participacion', true], ['ultimo', true], ['recuento', false]]);
+test('variantes: participación, último corte y recuento; una variante desconocida cae en participación', () => {
+  assert.deepEqual(VARIANTES.map((v) => [v.id, v.disponible]), [['participacion', true], ['ultimo', true], ['recuento', true]]);
   assert.equal(elegirVariante('ultimo').id, 'ultimo');
-  assert.equal(elegirVariante('recuento').id, 'participacion');
+  assert.equal(elegirVariante('recuento').id, 'recuento');
   assert.equal(elegirVariante('x').id, 'participacion');
   assert.equal(elegirVariante(undefined).id, 'participacion');
 });
@@ -82,7 +82,7 @@ test('texto WhatsApp, participación: una línea por mesa, total por corte con m
   assert.ok(lineas.includes('Participación acumulada — PROVISIONAL (2/4 mesas)'));
   assert.ok(lineas.includes('Cortes: 10:00 → 12:00'));
   assert.ok(lineas.includes('4-2-A: 60 → 120 · 20,0 %'));
-  assert.ok(lineas.includes('4-3-A: 50 → — · 10,0 %'));
+  assert.ok(lineas.includes('4-3-A: 50 → – · 10,0 %'));
   assert.ok(lineas.includes('4-3-B: sin datos'));
   assert.ok(lineas.includes('*TOTAL por corte:*'));
   assert.ok(lineas.includes('10:00: 150 (3/4 mesas) · 10,0 %'));

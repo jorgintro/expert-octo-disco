@@ -69,10 +69,10 @@ Hay dos bases SQLite (ver la sección 9 bis): **`app.db`** (configuración y cap
 - **admin**: `id`, `usuario`, `password_hash` (argon2 o bcrypt).
 - **corte**: `id`, `hora` (`HH:MM`), `orden`. Valores iniciales: 10:00, 12:00, 14:00, 16:00, 18:00, 20:00. Configurables.
 - **participacion**: `id`, `mesa_id`, `corte_id`, `votantes_acumulados`, `introducido_por_tipo` (agente/admin), `introducido_por_id`, `actualizado_en`. Única por (`mesa_id`, `corte_id`).
-- **candidatura**: `id`, `eleccion` (`congreso`/`senado`), `nombre`, `siglas`, `orden`, `destacada` (bool, para la vista pantallazo), `activa`.
-- **recuento_mesa**: `mesa_id`, `eleccion`, `votos_blancos`, `votos_nulos`, `estado` (`borrador`/`cerrado`), `actualizado_en`, `introducido_por`.
+- **candidatura**: `id`, `eleccion` (`congreso`/`senado`), `nombre`, `siglas`, `orden` (orden de la Junta Electoral Central, estable), `destacada` (bool, para la vista pantallazo), `activa`, `color` (corporativo) y `logo` (imagen subida desde el panel, opcional). Es configuración compartida por DEMO y REAL.
+- **recuento_mesa**: `mesa_id`, `eleccion`, `votantes` (total de votantes declarado), `votos_blancos`, `votos_nulos`, `estado` (`borrador`/`cerrado`), `version` (control optimista de concurrencia), `introducido_por_tipo` (agente/admin), `introducido_por_id`, `actualizado_en`. Un campo vacío (`NULL`) significa «sin rellenar» y es distinto de 0.
 - **recuento_voto**: `mesa_id`, `candidatura_id`, `votos`. Única por (`mesa_id`, `candidatura_id`).
-- **ajuste**: clave-valor (por ejemplo `recuento_abierto`, `senado_abierto`, `zona_horaria`).
+- **ajuste**: clave-valor (por ejemplo `recuento_abierto_demo`/`recuento_abierto_real`, `recuento_activado_*`, `senado_abierto`, `zona_horaria`): el recuento tiene su propio estado por modo y en REAL arranca cerrado.
 - **auditoria**: `id`, `fecha`, `actor_tipo`, `actor_id`, `accion`, `entidad`, `entidad_id`, `valor_anterior`, `valor_nuevo`. Se escribe en **toda** modificación de datos (incluidos cambios de censo, asignaciones y activación del recuento).
 
 ## 6. Reglas de validación
@@ -88,8 +88,12 @@ Hay dos bases SQLite (ver la sección 9 bis): **`app.db`** (configuración y cap
 1. Votos por candidatura, blancos y nulos: enteros ≥ 0.
 2. `votos a candidaturas + blancos + nulos = total de votantes de la mesa`.
 3. Total de votantes ≤ censo.
-4. Si el total de votantes difiere de la última participación acumulada (corte de las 20:00), se avisa con una advertencia, sin bloquear.
-5. El estado `cerrado` bloquea la edición al agente; solo el administrador puede reabrir.
+4. Si el total de votantes difiere de la **última participación informada** de la mesa, se avisa con una advertencia (dentro de la confirmación de cierre), sin bloquear.
+5. El estado `cerrado` bloquea la edición al agente; solo el administrador puede reabrir (conserva la autoría). Lo introducido por el administrador no lo edita el agente.
+6. Cerrar la mesa exige todos los campos rellenados (0 incluido) y que la suma cuadre; se guarda borrador con datos parciales. Cerrar siempre pide confirmación.
+7. Solo las mesas **cerradas** suman en totales; el % es sobre votos válidos (candidaturas + blancos), con 2 decimales.
+8. **Apertura del recuento**: el administrador la abre y cierra a mano (auditado). En REAL exige al menos una candidatura activa y la participación informada de todas las mesas activas en el último corte (en DEMO no); antes de las 20:00 avisa sin bloquear. Una vez activado, la estructura de candidaturas (altas, orden, activa/destacada) queda bloqueada.
+9. Interfaz del agente: «clicker» por candidatura (− resta un voto, + suma un voto) con logo y colores, opción de teclear, «Otros» desplegable, suma en vivo, autoguardado del borrador y tolerancia a la mala conexión.
 
 **Recuento del Senado (0.6.y)**
 - Cada elector puede marcar hasta 3 nombres, así que los votos van **por candidato** y la suma no cuadra con el total de votantes.
@@ -120,7 +124,7 @@ Hay dos bases SQLite (ver la sección 9 bis): **`app.db`** (configuración y cap
 **Vista pantallazo** (`/pantallazo`, solo administrador, aunque se podrá compartir un enlace de solo lectura con token en una versión posterior)
 - Pantalla limpia, sin menús, tipografía grande, buen contraste, ancho pensado para captura de móvil en vertical: cabe entera en 360 px sin desplazamiento horizontal.
 - Título con colegio y tipo de elección (`Elecciones Generales`) y **hora de actualización** muy visible (hora de Madrid): la de generación de la pantalla, que se refresca por sondeo (10 s). Si el sondeo falla, aparece arriba, dentro de la captura, una franja roja «SIN CONEXIÓN · los datos son de las HH:MM:SS» para que un pantallazo con datos viejos no engañe.
-- Variantes seleccionables: **Participación** (mesas en filas, cortes en columnas —solo los que ya tienen algún dato, con cabeceras abreviadas 10h, 12h…—, con fila de total del colegio, de mesas informadas y % sobre censo), **Último corte** (compacta: último corte con datos, acumulado, parcial y % por mesa, y total), **Recuento** (candidaturas destacadas, mesas escrutadas, blancos, nulos y total; llega en la 0.5, el selector ya la contempla desactivada).
+- Variantes seleccionables: **Participación** (mesas en filas, cortes en columnas —solo los que ya tienen algún dato, con cabeceras abreviadas 10h, 12h…—, con fila de total del colegio, de mesas informadas y % sobre censo), **Último corte** (compacta: último corte con datos, acumulado, parcial y % por mesa, y total), **Recuento** (candidaturas destacadas con barras, «Otros», blancos, nulos, total de votantes, mesas escrutadas y «Provisional»; con marca de agua DEMO y copia como texto).
 - Marca de estado: «Provisional» mientras el último corte con datos no tenga todas las mesas informadas; «Completo» cuando las tiene todas. Las mesas de baja no cuentan.
 - Los controles (selector de variante, **Copiar como texto**, **Modo captura**) van debajo del lienzo; «Modo captura» los oculta para hacer una captura limpia y se sale tocando el título. «Copiar como texto» genera un resumen en texto plano apto para WhatsApp (en DEMO, marcado al principio y al final con «*** DEMO - DATOS DE PRUEBA, NO SON REALES ***»).
 - **Marca de agua "DEMO"**: en modo DEMO, toda captura de esta vista llevará una marca de agua "DEMO" bien visible (diagonal, sobre el contenido y dentro de la propia imagen de la pantalla), para que un pantallazo de datos de prueba no pueda confundirse con datos reales en el grupo de WhatsApp. En REAL no hay marca de agua. (Requisito para la 0.4.y.)
@@ -192,7 +196,8 @@ Formato de versión: **0.X.y** (X e y de 1 a 100). Solo la versión del día de 
 - [ ] Datos de prueba y simulacro borrados.
 - [ ] Contraseña de administrador y secretos cambiados.
 - [ ] PIN generados y entregados a los agentes.
-- [ ] Candidaturas del Congreso (y Senado) cargadas y ordenadas.
+- [ ] Candidaturas del Congreso (y Senado) cargadas, ordenadas y con logo; sin candidaturas de prueba.
+- [ ] Recuento en REAL cerrado hasta tener la participación informada de todas las mesas.
 - [ ] Copia de seguridad probada y restauración verificada.
 - [ ] Hora del servidor correcta (`Europe/Madrid`).
 - [ ] A primera hora del 29N: comprobar que el banner dice REAL (sin banner naranja), que `/version` devuelve `"modo":"REAL"` y que la hora del servidor en la pantalla "Modo de trabajo" es la de Madrid.
@@ -206,4 +211,3 @@ Cerradas: elecciones generales (Congreso y Senado), 6 mesas del Colegio Dulcinea
 Pendientes (se resuelven antes de la fase indicada):
 - Modelo exacto del Senado y lista de candidatos (antes de 0.6.y).
 - Si se quiere enlace de solo lectura con token para compartir la vista pantallazo (después de 0.4.y).
-- Lista de candidaturas del Congreso que se quieren destacar (antes de 0.5.y).

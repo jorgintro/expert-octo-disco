@@ -1,4 +1,6 @@
-import { construirResumen, elegirVariante, textoWhatsApp } from '../resumen.js';
+import { hojaCandidaturas, listarCandidaturas } from '../candidaturas.js';
+import { construirResumenRecuento, textoRecuento } from '../recuento.js';
+import { TIPO_ELECCION, construirResumen, elegirVariante, textoWhatsApp } from '../resumen.js';
 import { listarCortes } from '../servicioParticipacion.js';
 import { formatearMadrid } from '../tiempo.js';
 import { pagina, paginaAdmin, responder } from '../vistas.js';
@@ -28,9 +30,15 @@ export default async function rutasResumen(app) {
     const variante = elegirVariante(req.query?.variante);
     const { colegio, resumen, fecha, hora, actualizado } = cargar(req);
     const modo = req.modo.modo;
-    const texto = textoWhatsApp({ resumen, variante: variante.id, colegio, modo, actualizado });
-    const cuerpo = lienzoPantallazo({ colegio, resumen, variante, modo, hora, fecha, texto });
+    const esRecuento = variante.id === 'recuento';
+    const resumenRecuento = esRecuento
+      ? construirResumenRecuento({ mesas: resumen.mesas.map((f) => f.mesa), candidaturas: listarCandidaturas(db), recuentos: req.captura.listarRecuentos() })
+      : null;
+    const texto = esRecuento
+      ? textoRecuento({ resumen: resumenRecuento, colegio, modo, actualizado, tipoEleccion: TIPO_ELECCION })
+      : textoWhatsApp({ resumen, variante: variante.id, colegio, modo, actualizado });
+    const cuerpo = lienzoPantallazo({ colegio, resumen, resumenRecuento, variante, modo, hora, fecha, texto });
     const titulo = `${modo === 'DEMO' ? 'DEMO · ' : ''}Pantallazo · ${variante.etiqueta}`;
-    return responder(reply, pagina(titulo, cuerpo.texto, { claseBody: 'pantallazo' }));
+    return responder(reply, pagina(titulo, cuerpo.texto, { claseBody: 'pantallazo', hojas: esRecuento ? [hojaCandidaturas(db).url] : [] }));
   });
 }

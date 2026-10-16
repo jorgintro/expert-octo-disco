@@ -87,6 +87,6 @@ test('histórico: acumulado, parcial y % sobre censo, con huecos', () => {
   assert.equal(h[5].vacio, true);
   assert.equal(formatoPorcentaje(16.3), '16,3 %');
   assert.equal(formatoPorcentaje(100), '100,0 %');
-  assert.equal(formatoPorcentaje(null), '—');
+  assert.equal(formatoPorcentaje(null), '–');
   assert.equal(porcentajeSobreCenso(5, 0), null);
 });

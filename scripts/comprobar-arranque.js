@@ -75,10 +75,10 @@ try {
     if (salud.json().modo !== 'DEMO') throw new Error(`modo inesperado: ${salud.json().modo}`);
     const entrada = await app.inject('/');
     if (entrada.statusCode !== 200 || !entrada.body.includes('name="pin"')) throw new Error('la pantalla de PIN no se sirve');
-    for (const recurso of ['/agente.js', '/resumen.js', '/estilos.css']) {
+    for (const recurso of ['/agente.js', '/resumen.js', '/recuento.js', '/candidaturas.js', '/estilos.css', '/candidaturas.css']) {
       if ((await app.inject(recurso)).statusCode !== 200) throw new Error(`falta public${recurso} en la imagen`);
     }
-    for (const protegida of ['/admin/resumen', '/pantallazo', '/admin/historico', '/admin/cortes']) {
+    for (const protegida of ['/admin/resumen', '/pantallazo', '/admin/historico', '/admin/cortes', '/admin/candidaturas', '/admin/recuento']) {
       const r = await app.inject(protegida);
       if (r.statusCode !== 302 || r.headers.location !== '/admin/login') throw new Error(`${protegida} debe exigir sesión de administrador`);
     }
@@ -87,6 +87,13 @@ try {
     const captura = app.datos.captura();
     captura.guardarParticipacion({ mesaId: 1, corteId: 1, votantes: 1, actor: { tipo: 'admin', id: 1 } });
     if (db.prepare('SELECT COUNT(*) AS n FROM participacion').get().n !== 0) throw new Error('la captura demo llegó a app.db');
+    // El recuento (tablas de captura de demo.db) también va solo a demo.db
+    const cand = db.prepare("INSERT INTO candidatura (nombre, siglas, orden, destacada, activa, color) VALUES ('Prueba', 'PR', 1, 0, 1, '#546e7a')").run().lastInsertRowid;
+    const r = captura.guardarRecuento({
+      mesaId: 1, valores: { votantes: 3, blancos: 1, nulos: 0, votos: new Map([[Number(cand), 2]]) },
+      estado: 'cerrado', versionEsperada: 0, actor: { tipo: 'admin', id: 1 }, automatico: false,
+    });
+    if (!r || db.prepare('SELECT COUNT(*) AS n FROM recuento_mesa').get().n !== 0) throw new Error('el recuento demo llegó a app.db');
     // Al pasar a REAL la demo se descarta
     app.datos.cambiarModo('REAL', { tipo: 'sistema', id: null });
     if (existsSync(path.join(dir, 'demo.db'))) throw new Error('demo.db no se eliminó al pasar a REAL');

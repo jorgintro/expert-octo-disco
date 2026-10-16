@@ -34,7 +34,11 @@ export function html(trozos, ...valores) {
   return new Crudo(salida);
 }
 
-export function pagina(titulo, cuerpo, { claseBody = '' } = {}) {
+// URL de un recurso estático con la versión de la app: al desplegar una versión nueva el navegador
+// no puede quedarse con un CSS/JS antiguo (los estáticos se sirven con no-cache + ETag).
+export const recurso = (ruta) => `${ruta}?v=${version}`;
+
+export function pagina(titulo, cuerpo, { claseBody = '', hojas = [] } = {}) {
   return `<!doctype html>
 <html lang="es">
 <head>
@@ -42,7 +46,7 @@ export function pagina(titulo, cuerpo, { claseBody = '' } = {}) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>${esc(titulo)}</title>
-<link rel="stylesheet" href="/estilos.css">
+<link rel="stylesheet" href="${recurso('/estilos.css')}">${hojas.map((h) => `\n<link rel="stylesheet" href="${esc(h)}">`).join('')}
 </head>
 <body${claseBody ? ` class="${esc(claseBody)}"` : ''}>
 <!--MODO_BANNER-->
@@ -64,6 +68,16 @@ export function bannerModo(modo) {
 export const pieModo = (modo) => (modo === 'DEMO' ? ' · <strong>MODO DEMO</strong>' : ' · Modo REAL');
 
 const AVISOS = {
+  recuento_abierto: 'Recuento abierto.',
+  recuento_cerrado: 'Recuento cerrado.',
+  recuento_guardado: 'Recuento guardado.',
+  recuento_mesa_cerrada: 'Mesa cerrada.',
+  recuento_reabierta: 'Mesa reabierta: vuelve a estar en borrador.',
+  candidatura_creada: 'Candidatura creada.',
+  candidatura_guardada: 'Candidatura guardada.',
+  candidatura_movida: 'Orden actualizado.',
+  candidatura_borrada: 'Candidatura borrada.',
+  logo_quitado: 'Logo quitado.',
   cortes_guardados: 'Horas de los cortes guardadas.',
   cortes_sin_cambios: 'No has cambiado ninguna hora.',
   dato_guardado: 'Dato guardado.',
@@ -85,12 +99,13 @@ const AVISOS = {
 };
 export const aviso = (codigo) => AVISOS[codigo] ?? null;
 
-export function paginaAdmin(titulo, { csrf, aviso: textoAviso, error } = {}, cuerpo = '') {
+export function paginaAdmin(titulo, { csrf, aviso: textoAviso, error, hojas = [] } = {}, cuerpo = '') {
   return pagina(
     titulo,
     html`<nav class="nav" aria-label="Administración">
   <a href="/admin/resumen">Resumen</a>
   <a href="/admin/participacion">Participación</a>
+  <a href="/admin/recuento">Recuento</a>
   <a href="/pantallazo">Pantallazo</a>
   <form method="post" action="/admin/logout">
     <input type="hidden" name="_csrf" value="${csrf}">
@@ -102,6 +117,7 @@ export function paginaAdmin(titulo, { csrf, aviso: textoAviso, error } = {}, cue
       <a href="/admin">Inicio</a>
       <a href="/admin/mesas">Mesas</a>
       <a href="/admin/agentes">Agentes</a>
+      <a href="/admin/candidaturas">Candidaturas</a>
       <a href="/admin/cortes">Cortes</a>
       <a href="/admin/historico">Histórico</a>
       <a href="/admin/modo">Modo</a>
@@ -113,7 +129,8 @@ export function paginaAdmin(titulo, { csrf, aviso: textoAviso, error } = {}, cue
 <h1>${titulo}</h1>
 ${textoAviso ? html`<p class="aviso" role="status">${textoAviso}</p>` : ''}
 ${error ? html`<p class="error" role="alert">${error}</p>` : ''}
-${crudo(cuerpo)}`.texto
+${crudo(cuerpo)}`.texto,
+    { hojas }
   );
 }
 
@@ -122,7 +139,7 @@ export function responder(reply, contenido, codigo = 200) {
 }
 
 // Pantallas de agente: cabecera con su nombre y botón de salir (el banner de modo lo pone `pagina`).
-export function paginaAgente(titulo, { csrf, aviso: textoAviso, error, agente } = {}, cuerpo = '') {
+export function paginaAgente(titulo, { csrf, aviso: textoAviso, error, agente, hojas = [] } = {}, cuerpo = '') {
   return pagina(
     titulo,
     html`<header class="cabecera-agente">
@@ -135,6 +152,7 @@ export function paginaAgente(titulo, { csrf, aviso: textoAviso, error, agente } 
 <h1>${titulo}</h1>
 ${textoAviso ? html`<p class="aviso" role="status">${textoAviso}</p>` : ''}
 ${error ? html`<p class="error" role="alert">${error}</p>` : ''}
-${crudo(cuerpo)}`.texto
+${crudo(cuerpo)}`.texto,
+    { hojas }
   );
 }
