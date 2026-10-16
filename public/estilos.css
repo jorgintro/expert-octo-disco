@@ -75,3 +75,41 @@ select {
   border: 1px solid var(--suave); border-radius: 0.5rem; background: #fff; color: var(--texto);
 }
 td form { margin: 0; }
+
+/* ---- Agentes y participación ---- */
+.campo-numero {
+  font-size: 2rem; text-align: center; letter-spacing: 0.1em; min-height: 4rem;
+  font-variant-numeric: tabular-nums;
+}
+.discreto { text-align: center; font-size: 0.9rem; margin-top: 2rem; }
+.cabecera-agente { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--borde); }
+.cabecera-agente form { margin: 0; }
+.cabecera-agente .boton { width: auto; min-height: 2.5rem; padding: 0.25rem 1rem; }
+.agente-nombre { font-weight: 600; overflow-wrap: anywhere; }
+.pildoras { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0 0 0.5rem; }
+.pildora {
+  display: inline-block; min-height: 2.75rem; padding: 0.55rem 0.9rem; border: 2px solid var(--primario);
+  border-radius: 2rem; color: var(--primario); background: #fff; text-decoration: none; font-weight: 600;
+}
+.pildora.activa { color: #fff; background: var(--primario); }
+.dato-grande { font-size: 2.2rem; font-weight: 700; text-align: center; margin: 0.5rem 0; }
+.aviso-bloqueo { padding: 0.75rem 1rem; border-radius: 0.5rem; background: #fff4e0; border: 1px solid #e65100; }
+.confirmar { border: 2px solid #e65100; }
+.confirmar ul { padding-left: 1.2rem; }
+.estado-envio { min-height: 1.5rem; margin: 0; }
+.estado-envio.error { padding: 0.5rem 0.75rem; }
+.historial th, .historial td, .tabla-participacion th, .tabla-participacion td { padding: 0.55rem 0.4rem; }
+.historial tr.vacia, .tabla-participacion tr.vacia { color: var(--suave); }
+.marca-admin {
+  display: inline-block; min-width: 1.2rem; padding: 0 0.25rem; text-align: center; font-size: 0.75rem;
+  font-weight: 700; color: #fff; background: #6a1b9a; border-radius: 0.25rem;
+}
+.tabla-participacion { font-size: 0.95rem; }
+.celda { display: block; min-height: 2.75rem; padding: 0.7rem 0.3rem; text-align: right; text-decoration: none; }
+
+/* Tabla mesa × corte: que quepan las 6 columnas a 360 px sin desplazamiento */
+.tabla-participacion { font-size: 0.85rem; }
+.tabla-participacion th, .tabla-participacion td { padding: 0.5rem 0.15rem; }
+.tabla-participacion th[scope="row"] { white-space: nowrap; text-align: left; }
+.tabla-participacion thead th { white-space: nowrap; }
+.celda { padding: 0.7rem 0.15rem; }

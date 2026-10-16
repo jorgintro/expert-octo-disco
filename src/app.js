@@ -5,9 +5,10 @@ import fastifyFormbody from '@fastify/formbody';
 import path from 'node:path';
 import { GestorDatos } from './datos.js';
 import { raiz, version } from './version.js';
-import { bannerModo, pagina, pieModo } from './vistas.js';
+import { bannerModo, pieModo } from './vistas.js';
 import { confiarEnProxy } from './proxy.js';
 import rutasAdmin from './rutas/admin.js';
+import rutasAgente from './rutas/agente.js';
 
 export function crearApp({ db, config, logger = false, reloj = Date.now }) {
   const app = Fastify({ logger, trustProxy: confiarEnProxy(config.trustProxy) });
@@ -50,20 +51,7 @@ export function crearApp({ db, config, logger = false, reloj = Date.now }) {
   app.get('/healthz', async (req) => ({ estado: 'ok', modo: req.modo.modo }));
   app.get('/version', async (req) => ({ version, modo: req.modo.modo }));
 
-  app.get('/', async (req, reply) => {
-    reply.type('text/html; charset=utf-8');
-    return pagina(
-      'Participación y recuento',
-      `<h1>Participación y recuento</h1>
-<p class="subtitulo">Colegio Dulcinea · Alcalá de Henares</p>
-<section class="tarjeta">
-  <p><strong>La aplicación está en marcha.</strong></p>
-  <p>El acceso para agentes estará disponible en próximas versiones.</p>
-  <p><a href="/admin/login">Acceso administrador</a></p>
-</section>`
-    );
-  });
-
+  app.register(rutasAgente);
   app.register(rutasAdmin);
 
   return app;

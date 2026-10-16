@@ -35,3 +35,8 @@ export function esFechaValida(texto) {
   const f = new Date(Date.UTC(anio, mes - 1, dia));
   return f.getUTCFullYear() === anio && f.getUTCMonth() === mes - 1 && f.getUTCDate() === dia;
 }
+
+const formatoHora = new Intl.DateTimeFormat('en-GB', { timeZone: ZONA, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+
+// 'HH:MM' en Madrid del instante dado (ms). Comparable como texto con la hora de un corte.
+export const horaMadrid = (ms) => formatoHora.format(new Date(ms));

@@ -1,6 +1,6 @@
 import argon2 from 'argon2';
 import { MAX_PASSWORD, verificarPasswordAdmin } from '../auth.js';
-import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+import { crearCsrfLogin, textoSeguro } from '../csrfLogin.js';
 import { auditar } from '../auditoria.js';
 import { estaBloqueada, limpiarFallos, registrarFallo } from '../limiteIntentos.js';
 import { borrarSesion, borrarSesionesDeActor, buscarSesion, crearSesion, DURACION_SESION_MS } from '../sesiones.js';
@@ -8,16 +8,11 @@ import { aviso, html, pagina, paginaAdmin, responder } from '../vistas.js';
 import rutasAgentes from './agentes.js';
 import rutasBloqueos from './bloqueos.js';
 import rutasMesas from './mesas.js';
+import rutasParticipacion from './participacion.js';
 import rutasModo from './modo.js';
 
 const MIN_PASSWORD = 10;
 let hashFicticio = null; // para igualar tiempos cuando el usuario no existe
-
-const textoSeguro = (a, b) => {
-  const x = Buffer.from(String(a));
-  const y = Buffer.from(String(b));
-  return x.length === y.length && timingSafeEqual(x, y);
-};
 
 function formLogin({ csrf, error, usuario = '' } = {}) {
   return pagina(
@@ -47,34 +42,22 @@ export default async function rutasAdmin(app) {
       maxAge: DURACION_SESION_MS / 1000,
     });
 
-  // CSRF del login (aún no hay sesión): el token del formulario es el HMAC del valor de una
-  // cookie HttpOnly. Un sitio externo no puede calcularlo sin SESSION_SECRET.
-  const firmarCsrfLogin = (valor) => createHmac('sha256', config.sessionSecret).update(`login:${valor}`).digest('base64url');
-  const emitirCsrfLogin = (reply) => {
-    const valor = randomBytes(24).toString('base64url');
-    reply.setCookie('csrf_login', valor, {
-      httpOnly: true,
-      secure: config.cookieSegura,
-      sameSite: 'lax',
-      path: '/admin/login',
-      maxAge: 3600,
-    });
-    return firmarCsrfLogin(valor);
-  };
-  const csrfLoginValido = (req) => {
-    const valor = req.cookies.csrf_login;
-    return typeof valor === 'string' && valor !== '' && textoSeguro(req.body?._csrf ?? '', firmarCsrfLogin(valor));
-  };
+  const csrfLogin = crearCsrfLogin({
+    secreto: config.sessionSecret,
+    cookie: 'csrf_login',
+    ruta: '/admin/login',
+    segura: config.cookieSegura,
+  });
   const loginHtml = (reply, opciones, codigo = 200) => {
     reply.header('Cache-Control', 'no-store');
-    return responder(reply, formLogin({ ...opciones, csrf: emitirCsrfLogin(reply) }), codigo);
+    return responder(reply, formLogin({ ...opciones, csrf: csrfLogin.emitir(reply) }), codigo);
   };
 
   // ---- Públicas ----
   app.get('/admin/login', async (req, reply) => loginHtml(reply, {}));
 
   app.post('/admin/login', async (req, reply) => {
-    if (!csrfLoginValido(req)) {
+    if (!csrfLogin.valido(req)) {
       return loginHtml(reply, { error: 'La página ha caducado. Vuelve a intentarlo.' }, 403);
     }
     const ip = req.ip;
@@ -105,7 +88,7 @@ export default async function rutasAdmin(app) {
     const { token } = crearSesion(db, config.sessionSecret, 'admin', admin.id);
     auditar(db, { tipo: 'admin', id: admin.id }, 'login', 'admin', admin.id);
     cookieSesion(reply, token);
-    reply.clearCookie('csrf_login', { path: '/admin/login' });
+    csrfLogin.borrar(reply);
     return reply.redirect('/admin');
   });
 
@@ -144,6 +127,7 @@ export default async function rutasAdmin(app) {
 </section>
 <p><a class="boton" href="/admin/mesas">Mesas y censo</a></p>
 <p><a class="boton" href="/admin/agentes">Agentes y PIN</a></p>
+<p><a class="boton" href="/admin/participacion">Participación (tabla mesa × corte)</a></p>
 <p><a class="boton boton-sec" href="/admin/modo">Modo de trabajo (DEMO / REAL)</a></p>`.texto
         )
       );
@@ -201,6 +185,7 @@ export default async function rutasAdmin(app) {
 
     await priv.register(rutasMesas);
     await priv.register(rutasAgentes);
+    await priv.register(rutasParticipacion);
     await priv.register(rutasModo);
     await priv.register(rutasBloqueos);
   });

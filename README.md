@@ -70,6 +70,19 @@ Para practicar sin riesgo para los datos reales, la app trabaja en dos modos:
 
 Los intentos fallidos se cuentan por IP y **por separado**: contraseña de administrador (login, pantalla de modo y cambio de contraseña: 5 fallos en 15 minutos → bloqueo de 5 minutos) y PIN de agentes (15 fallos en 5 minutos → bloqueo de 5 minutos). Los agentes de un colegio comparten IP pública, y un fallo del administrador nunca los bloquea. Panel → **Bloqueos** muestra las IP bloqueadas y permite **desbloquear una IP** (por ámbito o todas). Si es el propio administrador el bloqueado, el bloqueo caduca solo a los 5 minutos (o se desbloquea desde otra red).
 
+### Si te bloqueas tú: `scripts/desbloquear.sh`
+
+Sin depender del panel (útil si es tu IP la bloqueada). Se ejecuta **en el servidor**, desde el directorio del repositorio:
+
+```bash
+scripts/desbloquear.sh                         # libera todas las IP, administrador y PIN
+scripts/desbloquear.sh 203.0.113.5             # solo esa IP
+scripts/desbloquear.sh --ambito admin          # solo bloqueos de contraseña de administrador
+scripts/desbloquear.sh 203.0.113.5 --ambito pin
+```
+
+Muestra qué había bloqueado y cuántos registros elimina, y deja constancia en la auditoría (`origen: script`). Si la app está arrancada usa `docker compose exec`; si no (parada o en bucle de reinicios), usa un contenedor temporal con la misma imagen. Para saber tu IP, consulta `docker compose logs --tail 20 tiroriro` (campo `remoteAddress`) o la pantalla Bloqueos si aún puedes entrar.
+
 ## IP real del cliente (`TRUST_PROXY`)
 
 El bloqueo de intentos de login es por IP, así que la app debe conocer la IP real. La cadena es *cliente → Cloudflare → Nginx Proxy Manager → app* y `TRUST_PROXY` indica cuántos saltos son de confianza:
@@ -129,6 +142,14 @@ docker compose exec -it tiroriro sqlite3 -readonly /app/data/app.db      # conso
 ```
 
 Las fechas están en UTC. Si el contenedor no está arrancado, usa `docker compose run --rm --no-deps --entrypoint sqlite3 tiroriro -readonly -header -column /app/data/app.db "…"`.
+
+## Uso con agentes y participación (0.3)
+
+- **Agentes:** entran en la raíz (`https://tiroriro.jdiaz.bid/`) con su PIN de 6 dígitos. Ven solo sus mesas. Para cada corte introducen el **acumulado** de votantes de la mesa (el parcial de cada tramo y el % sobre censo se calculan). El corte actual es el más reciente cuya hora ya pasó; pueden elegir otro. Pueden corregir sus datos, salvo los introducidos por el administrador. Si falla la conexión, el dato escrito no se pierde (se conserva también en el dispositivo) y se puede reintentar.
+- **Validaciones:** el acumulado debe ser un entero entre 0 y el censo, sin bajar respecto al corte anterior ni superar el siguiente ya introducido. Si un tramo supera el 25 % del censo, o (en REAL) el corte aún no ha llegado, se pide confirmación.
+- **Administrador → Participación:** tabla mesa × corte; al tocar una celda se introduce, corrige o **vacía** el dato (queda como «introducido por administrador», con una `A`, y los agentes ya no pueden tocarlo; si lo vacías, vuelven a poder). Plan B: el administrador puede introducirlo todo si falla un agente o la red.
+- **Modo:** en DEMO todo esto se guarda en `demo.db` (se descarta al pasar a REAL); en REAL, en `app.db`. El banner naranja avisa en todas las pantallas.
+- La auditoría de la captura vive en la base del modo (`demo.db` o `app.db`); la pantalla de histórico llega en la 0.4. Para consultarla ahora: `docker compose exec tiroriro sqlite3 -readonly -header -column /app/data/app.db "SELECT * FROM auditoria WHERE entidad = 'participacion' ORDER BY id DESC LIMIT 20"` (en DEMO, sustituye `app.db` por `demo.db`).
 
 ## Uso del panel de administración (0.2)
 

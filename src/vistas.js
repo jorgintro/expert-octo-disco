@@ -64,6 +64,9 @@ export function bannerModo(modo) {
 export const pieModo = (modo) => (modo === 'DEMO' ? ' · <strong>MODO DEMO</strong>' : ' · Modo REAL');
 
 const AVISOS = {
+  dato_guardado: 'Dato guardado.',
+  dato_sin_cambios: 'El dato ya estaba guardado así.',
+  dato_vaciado: 'Dato vaciado.',
   modo_cambiado: 'Modo de trabajo cambiado.',
   demo_reiniciada: 'Demo reiniciada: se han borrado los datos de prueba.',
   desbloqueada: 'IP desbloqueada.',
@@ -87,6 +90,7 @@ export function paginaAdmin(titulo, { csrf, aviso: textoAviso, error } = {}, cue
   <a href="/admin">Inicio</a>
   <a href="/admin/mesas">Mesas</a>
   <a href="/admin/agentes">Agentes</a>
+  <a href="/admin/participacion">Participación</a>
   <a href="/admin/modo">Modo</a>
   <a href="/admin/bloqueos">Bloqueos</a>
   <a href="/admin/password">Contraseña</a>
@@ -104,4 +108,22 @@ ${crudo(cuerpo)}`.texto
 
 export function responder(reply, contenido, codigo = 200) {
   return reply.code(codigo).type('text/html; charset=utf-8').send(contenido);
+}
+
+// Pantallas de agente: cabecera con su nombre y botón de salir (el banner de modo lo pone `pagina`).
+export function paginaAgente(titulo, { csrf, aviso: textoAviso, error, agente } = {}, cuerpo = '') {
+  return pagina(
+    titulo,
+    html`<header class="cabecera-agente">
+  <span class="agente-nombre">${agente.nombre}</span>
+  <form method="post" action="/agente/salir">
+    <input type="hidden" name="_csrf" value="${csrf}">
+    <button type="submit" class="boton boton-sec">Salir</button>
+  </form>
+</header>
+<h1>${titulo}</h1>
+${textoAviso ? html`<p class="aviso" role="status">${textoAviso}</p>` : ''}
+${error ? html`<p class="error" role="alert">${error}</p>` : ''}
+${crudo(cuerpo)}`.texto
+  );
 }

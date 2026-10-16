@@ -40,3 +40,11 @@ export function borrarSesionesDeActor(db, actorTipo, actorId, exceptoId = null) 
     exceptoId
   );
 }
+
+// Borra la sesión del token solo si pertenece al tipo de actor indicado (una cookie de un rol no
+// debe poder eliminar la sesión de otro).
+export function borrarSesionDeTipo(db, secreto, token, actorTipo) {
+  if (typeof token === 'string') {
+    db.prepare('DELETE FROM sesion WHERE id = ? AND actor_tipo = ?').run(idDeToken(secreto, token), actorTipo);
+  }
+}

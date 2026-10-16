@@ -73,6 +73,10 @@ try {
     const salud = await app.inject('/healthz');
     if (salud.statusCode !== 200) throw new Error(`/healthz respondió ${salud.statusCode}`);
     if (salud.json().modo !== 'DEMO') throw new Error(`modo inesperado: ${salud.json().modo}`);
+    const entrada = await app.inject('/');
+    if (entrada.statusCode !== 200 || !entrada.body.includes('name="pin"')) throw new Error('la pantalla de PIN no se sirve');
+    const js = await app.inject('/agente.js');
+    if (js.statusCode !== 200) throw new Error('falta public/agente.js en la imagen');
     if (!existsSync(path.join(dir, 'demo.db'))) throw new Error('no se creó demo.db en modo DEMO');
     // Captura de prueba: debe ir a demo.db y no tocar app.db
     const captura = app.datos.captura();
