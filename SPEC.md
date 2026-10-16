@@ -60,7 +60,7 @@ Reglas del acceso por PIN:
 
 Todas las fechas en UTC (ISO 8601), mostradas en `Europe/Madrid`.
 
-Hay dos bases SQLite (ver la sección 9 bis): **`app.db`** (configuración y captura real, con su auditoría) y **`demo.db`** (solo captura de prueba, su auditoría incluida). Las tablas de captura (`participacion`, y `recuento_mesa` / `recuento_voto` en la 0.5) existen en ambas con el mismo esquema y **sin claves foráneas** a `mesa`, `corte` ni `candidatura` (en `demo.db` esas tablas no existen): se referencian por id y la aplicación valida su existencia contra `app.db`.
+Hay dos bases SQLite (ver la sección 9 bis): **`app.db`** (configuración y captura real, con su auditoría) y **`demo.db`** (solo captura de prueba, su auditoría incluida). Las tablas de captura (`participacion`, `recuento_mesa` / `recuento_voto` del Congreso y `senado_mesa` / `senado_voto` / `senado_matriz` del Senado) existen en ambas con el mismo esquema y **sin claves foráneas** a `mesa`, `corte` ni `candidatura` (en `demo.db` esas tablas no existen): se referencian por id y la aplicación valida su existencia contra `app.db`.
 
 - **colegio**: `id`, `nombre`, `municipio`.
 - **mesa**: `id`, `colegio_id`, `distrito`, `seccion`, `letra`, `codigo` (ej. `4-2-A`, único por colegio), `censo` (entero ≥ 0), `activa`.
@@ -72,7 +72,9 @@ Hay dos bases SQLite (ver la sección 9 bis): **`app.db`** (configuración y cap
 - **candidatura**: `id`, `eleccion` (`congreso`/`senado`), `nombre`, `siglas`, `orden` (orden de la Junta Electoral Central, estable), `destacada` (bool, para la vista pantallazo), `activa`, `color` (corporativo) y `logo` (imagen subida desde el panel, opcional). Es configuración compartida por DEMO y REAL.
 - **recuento_mesa**: `mesa_id`, `eleccion`, `votantes` (total de votantes declarado), `votos_blancos`, `votos_nulos`, `estado` (`borrador`/`cerrado`), `version` (control optimista de concurrencia), `introducido_por_tipo` (agente/admin), `introducido_por_id`, `actualizado_en`. Un campo vacío (`NULL`) significa «sin rellenar» y es distinto de 0.
 - **recuento_voto**: `mesa_id`, `candidatura_id`, `votos`. Única por (`mesa_id`, `candidatura_id`).
-- **ajuste**: clave-valor (por ejemplo `recuento_abierto_demo`/`recuento_abierto_real`, `recuento_activado_*`, `senado_abierto`, `zona_horaria`): el recuento tiene su propio estado por modo y en REAL arranca cerrado.
+- **candidato_senado**: `id`, `nombre`, `orden` (posición en la papeleta, 1..n, estable), `candidatura_id` (partido: una candidatura del Congreso, opcional; hereda color y logo), `agrupacion` (texto libre, solo sin partido: mismo texto = misma lista), `color` (propio, solo sin partido), `activo`. Sin «destacados». Configuración compartida por DEMO y REAL. La **lista** de un candidato es su partido, o su agrupación, o él solo.
+- **senado_mesa**: `mesa_id`, `modo` (`sabana`/`totales`, fijado al guardar el primer dato), `validas`, `blancas`, `nulas`, `estado` (`borrador`/`cerrado`), `version`, `introducido_por_tipo/id`, `actualizado_en`. **senado_voto**: `mesa_id`, `candidato_id`, `votos`. **senado_matriz**: `mesa_id`, `marcas` (1..3), `mismo_partido` (0/1), `papeletas` (solo modo sábana; en totales queda vacía = «no disponible»). **Solo contadores: nunca se guarda el contenido de cada papeleta.**
+- **ajuste**: clave-valor (por ejemplo `recuento_demo_abierto`/`recuento_real_abierto`, `recuento_*_activado`, `senado_demo_abierto`/`senado_real_abierto`, `senado_*_activado`, `zona_horaria`): el recuento tiene su propio estado por modo y en REAL arranca cerrado.
 - **auditoria**: `id`, `fecha`, `actor_tipo`, `actor_id`, `accion`, `entidad`, `entidad_id`, `valor_anterior`, `valor_nuevo`. Se escribe en **toda** modificación de datos (incluidos cambios de censo, asignaciones y activación del recuento).
 
 ## 6. Reglas de validación
@@ -95,10 +97,16 @@ Hay dos bases SQLite (ver la sección 9 bis): **`app.db`** (configuración y cap
 8. **Apertura del recuento**: el administrador la abre y cierra a mano (auditado). En REAL exige al menos una candidatura activa y la participación informada de todas las mesas activas en el último corte (en DEMO no); antes de las 20:00 avisa sin bloquear. Una vez activado, la estructura de candidaturas (altas, orden, activa/destacada) queda bloqueada.
 9. Interfaz del agente: «clicker» por candidatura (− resta un voto, + suma un voto) con logo y colores, opción de teclear, «Otros» desplegable, suma en vivo, autoguardado del borrador y tolerancia a la mala conexión.
 
-**Recuento del Senado (0.6.y)**
-- Cada elector puede marcar hasta 3 nombres, así que los votos van **por candidato** y la suma no cuadra con el total de votantes.
-- Validaciones: votos por candidato ≥ 0; ningún candidato supera el total de votantes de la mesa; blancos y nulos ≥ 0; el total de votantes ≤ censo.
-- Se definirán con el administrador el modelo exacto y los candidatos antes de implementarlo.
+**Recuento del Senado (0.6.y; Madrid)**
+1. Se eligen 4 senadores y cada elector marca **hasta 3 nombres**. Más de 3 marcas = papeleta **nula**; sobre vacío o papeleta sin marcas = voto **en blanco**. Cada lista lleva 3 candidatos.
+2. **Interruptor propio**, independiente del Congreso, a mano y auditado (`abrir_senado` / `cerrar_senado`), con estado separado por modo (en REAL arranca cerrado). Con el Senado cerrado, los agentes no ven su formulario. En REAL antes de las 20:00 avisa sin bloquear; **no** exige participación (eso es del Congreso). Hace falta al menos un candidato activo. Una vez activado, la estructura de candidatos (alta, borrado, orden y activo) queda bloqueada, como en el Congreso; nombre, partido, agrupación y color siguen editables (cambiar el partido no recalcula la estadística de bloque ya contada). No se borra un candidato con votos (reales o de demo): se desactiva.
+3. **Dos modos por mesa; una mesa usa UNO cada vez**, fijado al guardar el primer dato. El agente no cambia de modo; solo el administrador puede **reiniciar** el Senado de una mesa (confirmación y auditoría) para cambiarlo.
+   - **Sábana a sábana** (principal, agente): una papeleta a la vez. Toque en un candidato la marca o desmarca (máximo 3; no hay cuarta marca). «Lista completa» (una por partido de ≤ 3 candidatos) marca los de la lista y confirma; «Confirmar papeleta» (1 a 3 marcas); «En blanco» (solo sin marcas); «Nula» (más de 3 marcas u otros casos). Tras confirmar se limpia la selección. «Deshacer última» (solo la última, guardada en el dispositivo). Contadores siempre visibles (contadas, válidas, blancas, nulas y votos por candidato). Los contadores y la última papeleta viven en el dispositivo y al servidor llegan solo **contadores**, por lotes y con control de versión; tras un conflicto se pueden **sumar las papeletas pendientes** a lo guardado o descartarlas; si el servidor ya tiene exactamente lo enviado (respuesta perdida) no hay conflicto. Reglas de la papeleta en `public/papeleta.js`, compartidas con el servidor.
+   - **Totales** (respaldo; administrador y agente que lo prefiera): votos por candidato, papeletas válidas, en blanco y nulas.
+4. **Datos** (solo contadores): votos por candidato; papeletas válidas por número de marcas (1, 2, 3) cruzadas con «todas las marcas son del mismo partido» (con 1 marca siempre sí) —base de la estadística de bloque—; blancas; nulas.
+5. **Validaciones** (servidor): enteros ≥ 0; votos de un candidato ≤ papeletas válidas; papeletas válidas ≤ suma de votos ≤ 3 × válidas; (válidas + blancas + nulas) ≤ censo de la mesa (esta última también bloquea guardar borradores). En sábana se comprueba además la coherencia matriz/votos. **Bloquean el cierre** las de totales; cerrar exige todo relleno (0 incluido). **Solo avisan** (dentro de la confirmación de cierre): si (válidas + blancas + nulas) difiere del total de votantes del Congreso de esa mesa o de la última participación informada. «Cerrar mesa» siempre con confirmación. Mesa cerrada: no la edita el agente; el administrador la reabre. Lo introducido por el administrador no lo edita el agente.
+6. **Administrador** (panel `/admin/senado`, sin pantallazo hasta la 0.6.2): mesas escrutadas n/N, votos por candidato con % sobre papeletas válidas (no suman 100: cada elector marca hasta 3), votos por partido, blancas, nulas, «Provisional» mientras falten mesas, matriz candidato × mesa con ficha por mesa (introducir, corregir, cerrar, reabrir, reiniciar; marcado «introducido por administrador») y sondeo automático. Solo suman las mesas **cerradas**.
+7. **Decisiones para la 0.6.2** (pantallazo y texto): variante «Senado» del pantallazo con ranking de candidatos por votos **sin resaltar a los 4 primeros**, barras con el color del partido, «Otros» desplegable (como en el Congreso), texto de WhatsApp como el del Congreso y **estadística de bloque** (a partir de la matriz de marcas × mismo partido; no disponible en las mesas en modo totales).
 
 ## 7. Pantallas
 
@@ -108,14 +116,15 @@ Hay dos bases SQLite (ver la sección 9 bis): **`app.db`** (configuración y cap
 - Cabecera con colegio y mesa asignada (con selector si tiene varias).
 - Tarjeta del **corte actual** (el más reciente cuya hora ya pasó, o el primero si es antes de las 10:00; se puede elegir cualquier otro). En REAL, si el corte elegido aún no ha llegado, se pide confirmación; en DEMO no. Campo numérico grande y botón "Guardar".
 - Histórico de cortes de la mesa con acumulado, parcial y % sobre censo.
-- Cuando el administrador abre el recuento: formulario del Congreso (una fila por candidatura, más blancos y nulos), con total y comprobación en vivo.
+- Cuando el administrador abre el recuento: formulario del Congreso (una fila por candidatura, más blancos y nulos), con total y comprobación en vivo. Con ambos abiertos, **pestañas Congreso | Senado** en las pantallas de recuento de la mesa; el Senado es la pantalla de papeleta (sábana a sábana) o, como respaldo, el formulario de totales.
 
 **Administrador**
 - **Resumen** (`/admin/resumen`): tabla mesa × corte con acumulado, parcial del tramo y % sobre censo; fila de totales del colegio; y, por corte, cuántas mesas están informadas (ej. `4/6`) y cuáles faltan en el último corte. Se actualiza sola por sondeo (cada 5 s) y muestra la hora de la última actualización. Solo cuentan las mesas **activas**. El **total del colegio** en un corte suma lo informado en él y su % es sobre el **censo de las mesas informadas** en ese corte (con 4/6 mesas, dividir entre el censo de las 6 daría una participación artificialmente baja); por eso el total de un corte puede ser menor que el del anterior si informaron menos mesas, y siempre se indica `n/N mesas`. En 360 px el panel se desplaza horizontalmente dentro de su contenedor, con la columna de mesa fija.
 - **Mesas**: alta/baja/edición de mesas, **censo editable**.
 - **Agentes**: alta/baja, asignación a mesas, generar/regenerar/revocar PIN.
 - **Cortes** (`/admin/cortes`): edición de la hora de cada corte (formato HH:MM, en orden estrictamente creciente; no se añaden ni se quitan cortes), auditada. Si el corte ya tiene datos (reales o de demo: la hora es configuración compartida por ambos modos) se avisa y se pide confirmación antes de cambiarla; los datos no se modifican, solo cambia la hora a la que se refieren.
-- **Candidaturas**: nombre, siglas, orden, destacada, activa (por elección).
+- **Candidaturas** (Congreso): nombre, siglas, orden, destacada, activa, color y logo. **Candidatos del Senado** (`/admin/senado/candidatos`): nombre, orden, partido asociado, agrupación y color, activo.
+- **Recuento del Senado** (`/admin/senado`): interruptor propio, resultados, matriz candidato × mesa y fichas (ver sección 6).
 - **Recuento**: botón para **abrir/cerrar el recuento** (la app avisa antes de las 20:00 pero no lo impide, para no depender del reloj del servidor), avance (mesas escrutadas, ej. 5/6) y resultados por mesa y totales.
 - **Introducir datos como administrador**: acceso desde la tabla a cualquier celda.
 - **Histórico** (`/admin/historico`): auditoría visible, paginada (25 por página) y filtrable por mesa, por actor (agente, administrador o sistema) y por tipo de acción, con la hora en `Europe/Madrid`. En REAL muestra `app.db`; en DEMO, la configuración de `app.db` más la captura de `demo.db` (etiquetada «DEMO»), sin la captura real. **Nunca muestra PIN ni contraseñas** (no se guardan en la auditoría y, además, se ocultan al mostrar).
@@ -186,7 +195,8 @@ Formato de versión: **0.X.y** (X e y de 1 a 100). Solo la versión del día de 
 | **0.3.2** | Acceso de agentes por PIN, captura de participación por cortes con validaciones, el administrador puede introducir, corregir y vaciar datos de cualquier mesa y corte. | Un agente guarda su dato desde el móvil; las validaciones rechazan datos incoherentes. |
 | **0.4.y** | Panel resumen (mesa × corte, parciales, %), vista pantallazo con variantes y hora de actualización, histórico de cambios. | Se hace un pantallazo legible en un móvil de 360 px. |
 | **0.5.y** | Candidaturas configurables, modo recuento del Congreso (abrir/cerrar), validación de la suma, avance de mesas escrutadas y totales, variante pantallazo de recuento. | Una mesa completa su recuento y el total del colegio se actualiza. |
-| **0.6.y** | Recuento del Senado según el modelo acordado. | Una mesa registra el Senado y el resumen lo refleja. |
+| **0.6.1** | Recuento del Senado, primera mitad: candidatos configurables, interruptor propio, modo «sábana a sábana» y modo «totales», datos (incluida la matriz de marcas), validaciones, panel de administración y fichas de mesa. | Una mesa registra el Senado en sábana y el administrador lo ve en su panel. |
+| **0.6.2** | Recuento del Senado, segunda mitad: variante «Senado» del pantallazo, texto de WhatsApp y estadística de bloque. | El pantallazo del Senado se lee bien en un móvil de 360 px. |
 | **0.7.y y siguientes** | Endurecimiento: copias automáticas, pruebas de carga y de móvil con mala conexión, revisión de seguridad, ajustes de usabilidad y simulacro completo con datos ficticios. | Simulacro completo sin errores y restauración de copia probada. |
 | **1.0.0** | Versión final del día de las elecciones: congelación de funcionalidad, datos de prueba eliminados, secretos rotados, censo real cargado. | Lista de verificación previa a la jornada completada. |
 
@@ -198,6 +208,7 @@ Formato de versión: **0.X.y** (X e y de 1 a 100). Solo la versión del día de 
 - [ ] PIN generados y entregados a los agentes.
 - [ ] Candidaturas del Congreso (y Senado) cargadas, ordenadas y con logo; sin candidaturas de prueba.
 - [ ] Recuento en REAL cerrado hasta tener la participación informada de todas las mesas.
+- [ ] Candidatos del Senado cargados en el orden de la papeleta, con su partido o agrupación, y sin candidatos de prueba; Senado cerrado hasta tener los datos del cierre.
 - [ ] Copia de seguridad probada y restauración verificada.
 - [ ] Hora del servidor correcta (`Europe/Madrid`).
 - [ ] A primera hora del 29N: comprobar que el banner dice REAL (sin banner naranja), que `/version` devuelve `"modo":"REAL"` y que la hora del servidor en la pantalla "Modo de trabajo" es la de Madrid.
@@ -209,5 +220,5 @@ Formato de versión: **0.X.y** (X e y de 1 a 100). Solo la versión del día de 
 Cerradas: elecciones generales (Congreso y Senado), 6 mesas del Colegio Dulcinea, censo de europeas editable, cortes a las 10, 12, 14, 16, 18 y 20, participación acumulada, acceso por PIN con administración que puede introducir datos, Congreso en 0.5.y y Senado en 0.6.y, candidaturas configurables desde el panel, despliegue Docker + Nginx Proxy Manager, versionado 0.X.y hasta 1.0.0, definición de «total del colegio» y de «Provisional» (sección 7), modo DEMO / REAL con `demo.db` separada (sección 9 bis), contadores de intentos separados para administrador y agentes.
 
 Pendientes (se resuelven antes de la fase indicada):
-- Modelo exacto del Senado y lista de candidatos (antes de 0.6.y).
+- Lista de candidatos del Senado (la cargará el administrador cuando se publique; antes de la jornada).
 - Si se quiere enlace de solo lectura con token para compartir la vista pantallazo (después de 0.4.y).

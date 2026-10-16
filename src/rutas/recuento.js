@@ -6,6 +6,7 @@ import { abrirRecuento, cerrarRecuento, comprobarApertura } from '../servicioApe
 import { cargarMesaRecuento, guardarRecuentoMesa, reabrirRecuentoMesa } from '../servicioRecuento.js';
 import { formatearMadrid } from '../tiempo.js';
 import { html, paginaAdmin, recurso, responder } from '../vistas.js';
+import { pestanas } from '../vistasSenado.js';
 import { bloqueConfirmarCierre, formularioRecuento, matrizRecuento, resultadosRecuento, valoresDeDatos } from '../vistasRecuento.js';
 
 // Panel del recuento del Congreso (administrador): apertura, resultados, matriz por mesa y ficha de cada mesa.
@@ -29,7 +30,7 @@ export default async function rutasRecuento(app) {
     const sello = resumen.provisional
       ? html`<p class="sello provisional">PROVISIONAL · ${resumen.cerradas}/${resumen.totalMesas} mesas escrutadas</p>`
       : html`<p class="sello completo">COMPLETO · ${resumen.cerradas}/${resumen.totalMesas} mesas escrutadas</p>`;
-    const cuerpo = html`<section class="tarjeta">
+    const cuerpo = html`${pestanas({ congresoUrl: '/admin/recuento', senadoUrl: '/admin/senado', activa: 'congreso' })}<section class="tarjeta">
   <p class="estado-recuento ${abierto ? 'abierto' : 'cerrado'}">Recuento ${modo === 'DEMO' ? '(demo) ' : ''}<strong>${abierto ? 'ABIERTO' : 'CERRADO'}</strong></p>
   <p class="nota">Actualizado: <time id="hora-actualizacion">${hora}</time> · ${fecha} · hora de Madrid</p>
   <p class="aviso-sin-conexion" role="alert">SIN CONEXIÓN · los datos son de las ${hora}</p>

@@ -277,7 +277,7 @@ test('peticiones simultáneas al cruzar la medianoche: una sola transición, sin
 });
 
 test('estructura: ninguna ruta ni módulo, salvo la capa de captura, tiene SQL sobre las tablas de captura', () => {
-  const sql = /\b(FROM|INTO|UPDATE|JOIN|TABLE)\s+(participacion|recuento_\w+)/i;
+  const sql = /\b(FROM|INTO|UPDATE|JOIN|TABLE)\s+(participacion|recuento_\w+|senado_\w+)/i;
   const analizar = (dir) =>
     readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
       const ruta = path.join(dir, e.name);

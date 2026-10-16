@@ -165,3 +165,27 @@ export const CANDIDATURAS_MADRID = [
 export const PNG_1X1 = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
 export const JPEG_MIN = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(40, 1)]);
 export const WEBP_MIN = Buffer.concat([Buffer.from('RIFF', 'latin1'), Buffer.from([0x20, 0, 0, 0]), Buffer.from('WEBP', 'latin1'), Buffer.alloc(30, 2)]);
+
+// ---- Candidatos del Senado (configuración) ----
+// lista: [{ nombre, candidatura_id?, agrupacion?, color?, activo? }]; devuelve los ids en orden.
+export function insertarCandidatosSenado(db, lista) {
+  const siguiente = () => db.prepare('SELECT COALESCE(MAX(orden), 0) + 1 AS n FROM candidato_senado').get().n;
+  return lista.map(({ nombre, candidatura_id = null, agrupacion = '', color = '#546e7a', activo = 1 }) =>
+    Number(
+      db
+        .prepare('INSERT INTO candidato_senado (nombre, orden, candidatura_id, agrupacion, color, activo) VALUES (?, ?, ?, ?, ?, ?)')
+        .run(nombre, siguiente(), candidatura_id, agrupacion, color, activo).lastInsertRowid
+    )
+  );
+}
+
+// Papeleta de Madrid de ejemplo: 4 listas de 3 (las dos primeras con partido del Congreso; una agrupación; un independiente suelto).
+export function candidatosSenadoEjemplo(idsPartido) {
+  const [pp, psoe] = idsPartido;
+  return [
+    ...['Ana Pérez', 'Luis Gómez', 'Marta Ruiz'].map((nombre) => ({ nombre, candidatura_id: pp })),
+    ...['Pedro Sanz', 'Lucía Vega', 'Raúl Díaz'].map((nombre) => ({ nombre, candidatura_id: psoe })),
+    ...['Eva Mora', 'Iván Gil', 'Rosa Pino'].map((nombre) => ({ nombre, agrupacion: 'Agrupación Cívica', color: '#8e24aa' })),
+    { nombre: 'Tomás Solo', color: '#00897b' },
+  ];
+}

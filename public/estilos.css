@@ -337,3 +337,39 @@ details.rec-otros[open] .rec-flecha { transform: rotate(180deg); }
 .rp-siglas { overflow-wrap: anywhere; font-weight: 700; }
 .rp-votos, .rp-pct { text-align: right; font-variant-numeric: tabular-nums; }
 .rp-pct { color: #444; }
+
+/* ---- Senado: pestañas, sábana a sábana y totales ---- */
+.pestanas { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin: 0 0 0.75rem; }
+.pestana { display: flex; align-items: center; justify-content: center; min-height: 2.75rem; padding: 0.4rem 0.75rem; border: 2px solid var(--primario); border-radius: 0.6rem; background: var(--tarjeta); color: var(--primario); font-weight: 800; text-decoration: none; }
+.pestana.activa { color: #fff; background: var(--primario); }
+.modo-elegir { margin: 0 0 0.6rem; }
+.contadores-senado { position: sticky; top: 0; z-index: 3; display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.25rem; margin: 0 0 0.6rem; padding: 0.35rem 0.4rem; background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 0.6rem; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08); }
+.contadores-senado p { margin: 0; text-align: center; line-height: 1.15; }
+.cs-etq { display: block; font-size: 0.72rem; color: var(--suave); }
+.contadores-senado strong { font-size: 1.35rem; font-variant-numeric: tabular-nums; }
+.lista-senado, .lista-totales { margin: 0 0 0.75rem; padding: 0.5rem; background: var(--tarjeta); border: 1px solid var(--borde); border-left: 0.5rem solid var(--c, #546e7a); border-radius: 0.6rem; }
+.lista-totales { padding: 0.75rem; }
+.lista-cab { display: flex; align-items: center; gap: 0.5rem; margin: 0 0 0.4rem; }
+.lista-cab .marca { width: 2.2rem; height: 2.2rem; font-size: 0.5rem; }
+.lista-cab h2 { flex: 1; min-width: 0; margin: 0; font-size: 1.05rem; line-height: 1.2; overflow-wrap: anywhere; }
+.boton-lista { min-height: 2.75rem; padding: 0.3rem 0.6rem; font-size: 0.95rem; white-space: nowrap; }
+.cand-senado { display: flex; align-items: center; gap: 0.6rem; width: 100%; min-height: 2.9rem; margin: 0 0 0.35rem; padding: 0.35rem 0.6rem; font: inherit; font-size: 1.02rem; text-align: left; color: var(--texto); background: #fff; border: 2px solid var(--c, #546e7a); border-radius: 0.6rem; cursor: pointer; }
+.cand-senado[hidden] { display: none; }
+.cs-marca { flex: none; width: 1.5rem; height: 1.5rem; border: 2px solid var(--c, #546e7a); border-radius: 50%; background: #fff; }
+.cs-nombre { flex: 1; min-width: 0; font-weight: 700; line-height: 1.15; overflow-wrap: anywhere; }
+.cs-votos { flex: none; min-width: 2.2rem; text-align: right; font-weight: 800; font-variant-numeric: tabular-nums; }
+.cand-senado[aria-pressed="true"] { color: var(--t, #fff); background: var(--c, #546e7a); }
+.cand-senado[aria-pressed="true"] .cs-marca { background: var(--t, #fff); border-color: var(--t, #fff); box-shadow: inset 0 0 0 0.3rem var(--c, #546e7a); }
+.conflicto-marcas { margin: 0 0 0.6rem; padding: 0.5rem 0.75rem; font-weight: 700; color: #7a2e00; background: #fff3e0; border: 1px solid #e65100; border-radius: 0.5rem; }
+.conflicto-marcas[hidden] { display: none; }
+.barra-papeleta { position: sticky; bottom: 0; z-index: 4; margin: 0.75rem -0.25rem 0; padding: 0.5rem; background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 0.6rem 0.6rem 0 0; box-shadow: 0 -3px 6px rgba(0, 0, 0, 0.1); }
+.bp-marcas { margin: 0 0 0.35rem; font-weight: 700; }
+.bp-botones { display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr; gap: 0.35rem; }
+.bp-botones .boton { min-height: 2.9rem; padding: 0.3rem 0.2rem; font-size: 0.9rem; line-height: 1.1; }
+.bp-botones [hidden] { display: none; }
+.fila-total { display: flex; align-items: center; gap: 0.6rem; margin: 0 0 0.5rem; }
+.fila-total label { flex: 1; min-width: 0; margin: 0; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
+.fila-total .campo-numero { flex: none; width: 6.2rem; min-height: 2.9rem; margin: 0; padding: 0.3rem 0.5rem; font-size: 1.25rem; }
+.pestana.desactivada { color: var(--suave); border-color: var(--borde); background: #eee; font-weight: 400; cursor: not-allowed; }
+.lista-cab .boton-lista { width: auto; flex: none; margin: 0; }
+.lista-cab h2 { flex: 1 1 0; }

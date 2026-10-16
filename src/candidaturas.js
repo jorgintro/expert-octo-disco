@@ -37,9 +37,14 @@ export function colorTexto(hex) {
 
 // Hoja de estilos con el color de cada candidatura (los estilos en línea no están permitidos por la CSP).
 export function hojaCandidaturas(db) {
-  const css = listarCandidaturas(db)
-    .map((c) => `.cand-${c.id}{--c:${c.color};--t:${colorTexto(c.color)}}`)
-    .join('\n');
+  // También los candidatos del Senado (.cs-<id>): heredan el color de su partido o usan el suyo.
+  const candidatos = db
+    .prepare('SELECT s.id, COALESCE(c.color, s.color) AS color FROM candidato_senado s LEFT JOIN candidatura c ON c.id = s.candidatura_id ORDER BY s.id')
+    .all();
+  const css = [
+    ...listarCandidaturas(db).map((c) => `.cand-${c.id}{--c:${c.color};--t:${colorTexto(c.color)}}`),
+    ...candidatos.map((c) => `.cs-${c.id}{--c:${c.color};--t:${colorTexto(c.color)}}`),
+  ].join('\n');
   const hash = createHash('sha1').update(css).digest('hex').slice(0, 10);
   return { css: `${css}\n`, hash, url: `/candidaturas.css?v=${hash}` };
 }
@@ -159,6 +164,10 @@ export function borrarCandidatura(db, id, actor, modo, votos) {
     const d = votos.demo.get(id) ?? 0;
     if (r + d > 0) {
       throw new ErrorCandidatura(`No se puede borrar una candidatura que ya tiene votos (${r} reales, ${d} de demo): desactívala en su lugar.`, 409);
+    }
+    const senadores = db.prepare('SELECT COUNT(*) AS n FROM candidato_senado WHERE candidatura_id = ?').get(id).n;
+    if (senadores > 0) {
+      throw new ErrorCandidatura(`No se puede borrar: ${senadores} candidato${senadores === 1 ? '' : 's'} del Senado ${senadores === 1 ? 'tiene' : 'tienen'} esta candidatura como partido. Desactívala en su lugar.`, 409);
     }
     db.prepare('DELETE FROM candidatura WHERE id = ?').run(id);
     auditar(db, actor, 'borrar', 'candidatura', id, estado(actual), null);

@@ -11,13 +11,13 @@
 import { existsSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { auditar } from './auditoria.js';
-import { Captura, NOMBRE_DEMO, contarPorCandidatura, contarPorCorte } from './captura.js';
+import { Captura, NOMBRE_DEMO, contarPorCandidato, contarPorCandidatura, contarPorCorte } from './captura.js';
 import { abrirDb, migrarDemo } from './db.js';
 import { DEMO, REAL, modoEfectivo } from './modo.js';
 import { reiniciarBanderasDemo } from './recuentoEstado.js';
 
 export { NOMBRE_DEMO };
-export const TABLAS_CAPTURA = ['participacion']; // la 0.5 añadirá las de recuento
+export const TABLAS_CAPTURA = ['participacion', 'recuento_mesa', 'senado_mesa'];
 const SUFIJOS_SQLITE = ['', '-wal', '-shm'];
 const SISTEMA = { tipo: 'sistema', id: null };
 
@@ -204,6 +204,11 @@ export class GestorDatos {
   // Votos por candidatura en ambos destinos, SOLO LECTURA (para impedir borrar una candidatura con votos).
   contarVotosPorCandidatura() {
     return { real: contarPorCandidatura(this.#db), demo: this.#demo ? contarPorCandidatura(this.#demo) : new Map() };
+  }
+
+  // Votos por candidato del Senado en ambos destinos, SOLO LECTURA (para impedir borrar un candidato con votos).
+  contarVotosPorCandidato() {
+    return { real: contarPorCandidato(this.#db), demo: this.#demo ? contarPorCandidato(this.#demo) : new Map() };
   }
 
   cerrar() {

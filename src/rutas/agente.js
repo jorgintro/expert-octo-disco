@@ -1,7 +1,10 @@
 import { auditar } from '../auditoria.js';
 import { hojaCandidaturas } from '../candidaturas.js';
 import { codigoHttp, entradaDeBody, esPeticionFetch, jsonDeResultado, valoresDeEntrada, versionDeBody } from '../entradaRecuento.js';
-import { recuentoAbierto } from '../recuentoEstado.js';
+import { recuentoAbierto, senadoAbierto } from '../recuentoEstado.js';
+import { codigoHttp as codigoHttpSenado, entradaDeBody as entradaSenadoDeBody, jsonDeResultado as jsonSenado, valoresDeDatos as valoresSenadoDeDatos } from '../entradaSenado.js';
+import { cargarMesaSenado, comprobarAccesoSenado, guardarSenadoMesa } from '../servicioSenado.js';
+import { bloqueConfirmarCierreSenado, elegirModo, formularioTotales, pantallaSabana, pestanas, vistaSoloLecturaSenado, ESTADOS_MESA as ESTADOS_SENADO } from '../vistasSenado.js';
 import { cargarMesaRecuento, comprobarAcceso, guardarRecuentoMesa } from '../servicioRecuento.js';
 import { ESTADOS_MESA, bloqueConfirmarCierre, formularioRecuento, valoresDeDatos, vistaSoloLectura } from '../vistasRecuento.js';
 import { crearCsrfLogin, textoSeguro } from '../csrfLogin.js';
@@ -146,6 +149,24 @@ export default async function rutasAgente(app) {
 </section>`;
     }
 
+    function tarjetaSenado(req, mesa) {
+      if (!senadoAbierto(db, req.modo.modo)) return '';
+      const { cab } = req.captura.obtenerSenado(mesa.id);
+      const estado = cab?.estado ?? 'sin_iniciar';
+      return html`<section class="tarjeta">
+  <h2>Recuento del Senado</h2>
+  <p class="estado-mesa ${estado}">${ESTADOS_SENADO[estado]}</p>
+  <p><a class="boton" href="/agente/mesa/${mesa.id}/senado">${estado === 'cerrado' ? 'Ver el recuento del Senado' : 'Abrir el recuento del Senado'}</a></p>
+</section>`;
+    }
+
+    // Pestañas Congreso | Senado (solo si ambos están abiertos).
+    const pestanasAgente = (req, mesa, activa) =>
+      pestanas({
+        congresoUrl: `/agente/mesa/${mesa.id}/recuento`, senadoUrl: `/agente/mesa/${mesa.id}/senado`, activa,
+        congreso: recuentoAbierto(db, req.modo.modo), senado: senadoAbierto(db, req.modo.modo),
+      });
+
     function pantallaMesa(req, mesa, { corteId = null, valor = null, error = null, confirmacion = null } = {}) {
       const datos = datosDeMesa(db, req.captura, mesa.id);
       const actual = corteActual(datos.cortes, horaMadrid(req.modo.ahora));
@@ -180,6 +201,7 @@ export default async function rutasAgente(app) {
   ${tarjeta}
 </section>
 ${tarjetaRecuento(req, mesa)}
+${tarjetaSenado(req, mesa)}
 ${selectorCortes({ cortes: datos.cortes, filas: datos.filas, seleccionadoId: corte.id, actualId: actual.id, urlBase })}
 <h2>Histórico de la mesa</h2>
 ${tablaHistorial({ filas: construirHistorial({ cortes: datos.cortes, filas: datos.filas, censo: mesa.censo }), urlBase })}`;
@@ -227,7 +249,7 @@ ${tablaHistorial({ filas: construirHistorial({ cortes: datos.cortes, filas: dato
         return { codigo: 403, pagina: paginaAgente(`Recuento · Mesa ${mesa.codigo}`, ctx, html`<section class="tarjeta"><p class="aviso-bloqueo" role="alert">${acceso.mensaje} Cuando el Jefe de Colegio lo abra, aparecerá aquí.</p></section><p><a href="/agente/mesa/${mesa.id}">Volver a la mesa</a></p>`.texto) };
       }
       if (acceso) {
-        const cuerpo = html`${vistaSoloLectura({ datos, mensaje: acceso.mensaje })}<p><a href="/agente/mesa/${mesa.id}">Volver a la mesa</a></p>`;
+        const cuerpo = html`${pestanasAgente(req, mesa, 'congreso')}${vistaSoloLectura({ datos, mensaje: acceso.mensaje })}<p><a href="/agente/mesa/${mesa.id}">Volver a la mesa</a></p>`;
         return { codigo: 200, pagina: paginaAgente(`Recuento · Mesa ${mesa.codigo}`, ctx, cuerpo.texto) };
       }
       const cuerpo = confirmacion
@@ -236,7 +258,7 @@ ${tablaHistorial({ filas: construirHistorial({ cortes: datos.cortes, filas: dato
             valores: { votantes: String(confirmacion.valores.votantes), blancos: String(confirmacion.valores.blancos), nulos: String(confirmacion.valores.nulos), votos: confirmacion.valores.votos },
             avisos: confirmacion.avisos, suma: confirmacion.suma, urlVolver: baseRecuento(mesa), rol: 'agente',
           })
-        : html`${formularioRecuento({
+        : html`${pestanasAgente(req, mesa, 'congreso')}${formularioRecuento({
             csrf: req.sesion.csrf, base: baseRecuento(mesa), datos,
             valores: entrada ? valoresDeEntrada(entrada) : valoresDeDatos(datos), version: version ?? datos.cab?.version ?? 0, rol: 'agente',
           })}<p><a href="/agente/mesa/${mesa.id}">Volver a la mesa</a></p>`;
@@ -287,6 +309,82 @@ ${tablaHistorial({ filas: construirHistorial({ cortes: datos.cortes, filas: dato
 
     priv.post('/agente/mesa/:id/recuento/guardar', (req, reply) => guardarRecuento(req, reply, { cerrar: false }));
     priv.post('/agente/mesa/:id/recuento/cerrar', (req, reply) => guardarRecuento(req, reply, { cerrar: true }));
+
+    // ---------- Recuento del Senado (solo con el Senado abierto) ----------
+    const baseSenado = (mesa) => `/agente/mesa/${mesa.id}/senado`;
+
+    function pantallaSenado(req, mesa, { entrada = null, error = null, confirmacion = null, version = null } = {}) {
+      const datos = cargarMesaSenado(db, req.captura, mesa.id);
+      const ctx = ctxRecuento(req, { error });
+      const titulo = `Senado · Mesa ${mesa.codigo}`;
+      const acceso = comprobarAccesoSenado({ db, actor: req.actor, cab: datos.cab, modo: req.modo.modo });
+      if (acceso?.estado === 'senado_cerrado') {
+        return { codigo: 403, pagina: paginaAgente(titulo, ctx, html`<section class="tarjeta"><p class="aviso-bloqueo" role="alert">${acceso.mensaje} Cuando el Jefe de Colegio lo abra, aparecerá aquí.</p></section><p><a href="/agente/mesa/${mesa.id}">Volver a la mesa</a></p>`.texto) };
+      }
+      const tabs = pestanasAgente(req, mesa, 'senado');
+      if (acceso) {
+        const cuerpo = html`${tabs}${vistaSoloLecturaSenado({ datos, mensaje: acceso.mensaje })}<p><a href="/agente/mesa/${mesa.id}">Volver a la mesa</a></p>`;
+        return { codigo: 200, pagina: paginaAgente(titulo, ctx, cuerpo.texto) };
+      }
+      const pedido = ['sabana', 'totales'].includes(req.query?.modo) ? req.query.modo : null;
+      const modoMesa = datos.cab?.modo ?? entrada?.modo ?? pedido ?? 'sabana'; // el agente cuenta en sábana por defecto
+      const valores = entrada ?? valoresSenadoDeDatos(datos);
+      const v = version ?? datos.cab?.version ?? 0;
+      const args = { csrf: req.sesion.csrf, base: baseSenado(mesa), datos, valores, version: v, rol: 'agente' };
+      const cuerpo = confirmacion
+        ? bloqueConfirmarCierreSenado({
+            csrf: req.sesion.csrf, base: baseSenado(mesa), datos, version: confirmacion.version, valores: confirmacion.valores,
+            avisos: confirmacion.avisos, suma: confirmacion.suma, contadas: confirmacion.contadas, urlVolver: baseSenado(mesa), rol: 'agente',
+          })
+        : html`${tabs}${datos.cab ? '' : elegirModo({ base: baseSenado(mesa), predeterminado: 'sabana' })}${modoMesa === 'sabana' ? pantallaSabana(args) : formularioTotales(args)}<p><a href="/agente/mesa/${mesa.id}">Volver a la mesa</a></p>`;
+      return { codigo: 200, pagina: paginaAgente(titulo, ctx, cuerpo.texto) };
+    }
+
+    priv.get('/agente/mesa/:id/senado', async (req, reply) => {
+      const mesa = mesaDelAgente(req.agente.id, req.params.id);
+      if (!mesa) return denegada(req, reply);
+      const { codigo, pagina } = pantallaSenado(req, mesa);
+      return responder(reply, pagina, codigo);
+    });
+
+    async function guardarSenado(req, reply, { cerrar }) {
+      const mesa = mesaDelAgente(req.agente.id, req.params.id);
+      if (!mesa) return esPeticionFetch(req) ? reply.code(403).send({ ok: false, estado: 'bloqueado', mensaje: 'Esa mesa no es tuya o no existe.' }) : denegada(req, reply);
+      const datos = cargarMesaSenado(db, req.captura, mesa.id);
+      const entrada = entradaSenadoDeBody(req.body, datos.candidatos);
+      const version = versionDeBody(req.body);
+      const r = version === null
+        ? { estado: 'error', errores: ['Versión de la mesa no válida: recarga la página.'] }
+        : guardarSenadoMesa({
+            db, captura: req.captura, actor: req.actor, mesaId: mesa.id, entrada, version, cerrar,
+            confirmar: req.body?.confirmar === '1', automatico: req.body?.auto === '1', modo: req.modo.modo,
+          });
+      if (esPeticionFetch(req)) return reply.code(codigoHttpSenado(r)).send(jsonSenado(r));
+      switch (r.estado) {
+        case 'guardado':
+        case 'sin_datos': return reply.redirect(`${baseSenado(mesa)}?ok=senado_guardado`);
+        case 'cerrado': return reply.redirect(`/agente/mesa/${mesa.id}?ok=senado_mesa_cerrada`);
+        case 'confirmar': {
+          const p = pantallaSenado(req, mesa, { confirmacion: r });
+          return responder(reply, p.pagina, p.codigo);
+        }
+        case 'conflicto': {
+          const p = pantallaSenado(req, mesa, { entrada, error: r.mensaje, version: r.versionActual });
+          return responder(reply, p.pagina, 409);
+        }
+        case 'error': {
+          const p = pantallaSenado(req, mesa, { entrada, error: r.errores.join(' ') });
+          return responder(reply, p.pagina, 422);
+        }
+        default: {
+          const p = pantallaSenado(req, mesa, { error: r.mensaje });
+          return responder(reply, p.pagina, codigoHttpSenado(r) === 404 ? 404 : p.codigo === 200 ? codigoHttpSenado(r) : p.codigo);
+        }
+      }
+    }
+
+    priv.post('/agente/mesa/:id/senado/guardar', (req, reply) => guardarSenado(req, reply, { cerrar: false }));
+    priv.post('/agente/mesa/:id/senado/cerrar', (req, reply) => guardarSenado(req, reply, { cerrar: true }));
 
     priv.post('/agente/salir', async (req, reply) => {
       borrarSesionDeTipo(db, config.sessionSecret, req.cookies[COOKIE], 'agente');

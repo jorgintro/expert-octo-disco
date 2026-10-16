@@ -51,7 +51,7 @@ const compacto = (v) => {
 // Frase legible del cambio; si no se reconoce, el JSON (redactado y acortado).
 const sinRellenar = (v) => (v === null || v === undefined ? 'sin rellenar' : v);
 
-export function describir(fila, { mesas, cortes, candidaturas = new Map() }) {
+export function describir(fila, { mesas, cortes, candidaturas = new Map(), candidatos = new Map() }) {
   const antes = leerJson(fila.valor_anterior);
   const despues = leerJson(fila.valor_nuevo);
   if (fila.entidad === 'participacion') {
@@ -72,6 +72,24 @@ export function describir(fila, { mesas, cortes, candidaturas = new Map() }) {
     }
     if (despues && 'estado' in despues) partes.push(`estado ${antes?.estado ?? 'sin iniciar'} → ${despues.estado}`);
     return `Mesa ${mesas.get(ref.mesa_id) ?? ref.mesa_id}: ${partes.join(', ') || '—'}`;
+  }
+  if (fila.entidad === 'senado') {
+    const ref = despues ?? antes ?? {};
+    const partes = [];
+    if (!antes && despues?.modo) partes.push(`modo ${despues.modo === 'sabana' ? 'sábana a sábana' : 'totales'}`);
+    for (const [campo, nombre] of [['validas', 'Papeletas válidas'], ['blancas', 'En blanco'], ['nulas', 'Nulas']]) {
+      if (despues && campo in despues) partes.push(`${nombre} ${sinRellenar(antes?.[campo])} → ${sinRellenar(despues[campo])}`);
+    }
+    for (const [id, v] of Object.entries(despues?.votos ?? {})) {
+      partes.push(`${candidatos.get(Number(id)) ?? `candidato ${id}`} ${sinRellenar(antes?.votos?.[id])} → ${sinRellenar(v)}`);
+    }
+    for (const [celda, v] of Object.entries(despues?.matriz ?? {})) {
+      const [m, s] = celda.split(':');
+      partes.push(`${m} marca${m === '1' ? '' : 's'}${m === '1' ? '' : s === '1' ? ' (mismo partido)' : ' (partidos distintos)'} ${sinRellenar(antes?.matriz?.[celda])} → ${sinRellenar(v)}`);
+    }
+    if (despues && 'estado' in despues) partes.push(`estado ${antes?.estado ?? 'sin iniciar'} → ${despues.estado}`);
+    if (fila.accion === 'reiniciar') return `Mesa ${mesas.get(ref.mesa_id) ?? ref.mesa_id}: recuento del Senado reiniciado (modo ${antes?.modo === 'sabana' ? 'sábana a sábana' : 'totales'}, ${Object.keys(antes?.votos ?? {}).length} candidatos con datos)`;
+    return `Senado · mesa ${mesas.get(ref.mesa_id) ?? ref.mesa_id}: ${partes.join(', ') || '—'}`;
   }
   if (fila.entidad === 'mesa' && antes && despues && typeof antes === 'object') {
     const cambios = Object.keys(despues).filter((k) => antes[k] !== despues[k]).map((k) => `${k} ${compacto(antes[k])} → ${compacto(despues[k])}`);
@@ -116,6 +134,7 @@ export function contextoNombres(db) {
     mesas: new Map(db.prepare('SELECT id, codigo FROM mesa').all().map((m) => [m.id, m.codigo])),
     cortes: new Map(db.prepare('SELECT id, hora FROM corte').all().map((c) => [c.id, c.hora])),
     candidaturas: new Map(db.prepare('SELECT id, nombre, siglas FROM candidatura').all().map((c) => [c.id, c.siglas || c.nombre])),
+    candidatos: new Map(db.prepare('SELECT id, nombre FROM candidato_senado').all().map((c) => [c.id, c.nombre])),
     agentes: new Map(db.prepare('SELECT id, nombre FROM agente').all().map((a) => [a.id, a.nombre])),
     admins: new Map(db.prepare('SELECT id, usuario FROM admin').all().map((a) => [a.id, a.usuario])),
   };

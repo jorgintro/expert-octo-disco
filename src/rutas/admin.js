@@ -12,6 +12,8 @@ import rutasMesas from './mesas.js';
 import rutasParticipacion from './participacion.js';
 import rutasModo from './modo.js';
 import rutasRecuento from './recuento.js';
+import rutasSenado from './senado.js';
+import rutasSenadoCandidatos from './senadoCandidatos.js';
 import rutasResumen from './resumen.js';
 import rutasHistorico from './historico.js';
 import rutasCortes from './cortes.js';
@@ -200,6 +202,8 @@ export default async function rutasAdmin(app) {
     await priv.register(rutasParticipacion);
     await priv.register(rutasCandidaturas);
     await priv.register(rutasRecuento);
+    await priv.register(rutasSenado);
+    await priv.register(rutasSenadoCandidatos);
     await priv.register(rutasModo);
     await priv.register(rutasBloqueos);
   });
