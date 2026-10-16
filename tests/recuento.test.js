@@ -158,7 +158,8 @@ test('texto WhatsApp del recuento: destacadas, Otros, blancos, nulos, total y me
   assert.equal(real[1], 'Recuento Congreso — PROVISIONAL (1/3 mesas escrutadas)');
   assert.ok(real.includes('PP: 50 (52,08 %)')); // 50 / 96
   assert.ok(real.includes('PSOE: 30 (31,25 %)'));
-  assert.ok(real.includes('Otros: 10 (10,42 %)'));
+  assert.ok(real.includes('Otros: 10 votos (10,42 %)'));
+  assert.ok(real.includes('PPQ 8 · OP 2'), 'desglose compacto de las pequeñas');
   assert.ok(real.includes('Blancos: 6 (6,25 %)'));
   assert.ok(real.includes('Nulos: 4'));
   assert.ok(real.includes('*Total de votantes: 100*'));
@@ -170,4 +171,24 @@ test('texto WhatsApp del recuento: destacadas, Otros, blancos, nulos, total y me
   assert.equal(demo.at(-1), '*** DEMO - DATOS DE PRUEBA, NO SON REALES ***');
   const vacio = textoRecuento({ resumen: construirResumenRecuento({ mesas: MESAS, candidaturas: CAND, recuentos: new Map() }), colegio: 'C', modo: 'REAL', actualizado: 'x', tipoEleccion: 'E' });
   assert.match(vacio, /Todavía no hay mesas escrutadas\./);
+});
+
+test('desglose de «Otros»: de más a menos votos, empate por orden; el texto siempre lo lleva; sin pequeñas no hay «Otros»', () => {
+  const cands = [
+    ...CAND.slice(0, 2),
+    { id: 3, nombre: 'Tres', siglas: 'TRES', orden: 3, destacada: 0, activa: 1, color: '#111111' },
+    { id: 4, nombre: 'Cuatro', siglas: 'CUA', orden: 4, destacada: 0, activa: 1, color: '#222222' },
+    { id: 5, nombre: 'Cinco', siglas: '', orden: 5, destacada: 0, activa: 1, color: '#333333' },
+    { id: 6, nombre: 'Seis', siglas: 'SEI', orden: 6, destacada: 0, activa: 1, color: '#444444' },
+  ];
+  const recuentos = new Map([[1, rec(cab('cerrado', 2000, 0, 0), { 1: 700, 2: 500, 3: 5, 4: 1234, 5: 5, 6: 1556 })]]);
+  const r = construirResumenRecuento({ mesas: MESAS, candidaturas: cands, recuentos });
+  assert.deepEqual(r.otros.candidaturas.map((c) => c.cand.id), [6, 4, 3, 5], 'votos desc.; empate 3 y 5 por orden');
+  assert.equal(r.otros.votos, 1234 + 1556 + 5 + 5);
+  const texto = textoRecuento({ resumen: r, colegio: 'C', modo: 'REAL', actualizado: 'x', tipoEleccion: 'E' });
+  assert.ok(texto.split('\n').includes('SEI 1.556 · CUA 1.234 · TRES 5 · Cinco 5'));
+
+  const sinPequenas = construirResumenRecuento({ mesas: MESAS, candidaturas: CAND.slice(0, 2), recuentos });
+  assert.equal(sinPequenas.otros, null);
+  assert.doesNotMatch(textoRecuento({ resumen: sinPequenas, colegio: 'C', modo: 'REAL', actualizado: 'x', tipoEleccion: 'E' }), /Otros/);
 });

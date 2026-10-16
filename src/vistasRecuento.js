@@ -212,12 +212,23 @@ const filaRec = ({ marca, nombre, votos, pct, claseExtra = '', barra = true }) =
   ${barra ? html`<svg class="rec-barra" viewBox="0 0 100 4" preserveAspectRatio="none" aria-hidden="true"><rect class="fondo" width="100" height="4"/><rect class="relleno" width="${pct ?? 0}" height="4"/></svg>` : ''}
 </div>`;
 
+// «Otros» desplegable: la fila resumen es el <summary>; debajo, una línea compacta por candidatura pequeña.
+function desgloseOtros(otros, sin) {
+  const cabecera = filaRec({ nombre: html`Otros (${otros.cantidad})<span class="rec-flecha" aria-hidden="true"></span>`, votos: sin ? VACIO : otros.votos, pct: sin ? null : otros.porcentaje, claseExtra: 'gris' });
+  return html`<details class="rec-otros">
+  <summary>${cabecera}</summary>
+  <ul class="rec-pequenas">
+    ${otros.candidaturas.map((c) => html`<li><span class="rp-siglas">${nombreDe(c.cand)}</span><span class="rp-votos">${sin ? VACIO : c.votos}</span><span class="rp-pct">${sin ? '' : formatoPorcentaje2(c.porcentaje)}</span></li>`)}
+  </ul>
+</details>`;
+}
+
 export function tablaRecuento(resumen) {
   if (resumen.candidaturas.length === 0) return html`<p class="sin-datos">No hay candidaturas cargadas.</p>`;
   const sin = resumen.cerradas === 0;
   return html`<div class="rec-lista">
   ${resumen.destacadas.map((c) => filaRec({ marca: insignia(c.cand), nombre: nombreDe(c.cand), votos: sin ? VACIO : c.votos, pct: sin ? null : c.porcentaje, claseExtra: clase(c.cand) }))}
-  ${resumen.otros ? filaRec({ nombre: `Otros (${resumen.otros.cantidad})`, votos: sin ? VACIO : resumen.otros.votos, pct: sin ? null : resumen.otros.porcentaje, claseExtra: 'gris' }) : ''}
+  ${resumen.otros ? desgloseOtros(resumen.otros, sin) : ''}
   ${filaRec({ nombre: 'Blancos', votos: sin ? VACIO : resumen.blancos, pct: sin ? null : resumen.porcentajeBlancos, claseExtra: 'gris' })}
   ${filaRec({ nombre: 'Nulos', votos: sin ? VACIO : resumen.nulos, barra: false })}
   ${filaRec({ nombre: 'Total de votantes', votos: sin ? VACIO : resumen.votantes, claseExtra: 'total', barra: false })}
