@@ -42,13 +42,13 @@ Miniaplicación web mobile-first, autoalojada, para que los agentes de un colegi
 - La **participación es acumulada** por mesa y corte. El parcial de cada tramo se calcula, no se introduce.
 - Validaciones de participación: ≤ censo, sin decrecer respecto al corte anterior, sin superar el corte posterior ya introducido.
 - Validación del Congreso: `candidaturas + blancos + nulos = total de votantes` y total ≤ censo.
-- El Senado **no** se valida con esa suma (cada elector marca hasta 3 nombres); su modelo se acuerda antes de implementarlo.
+- El Senado **no** se valida con esa suma (cada elector marca hasta 3 nombres): su modelo (papeletas válidas, blancas y nulas, sábana a sábana o totales) está en `SPEC.md` §6. Solo se guardan **contadores**, nunca el contenido de cada papeleta. Tiene su propio interruptor de apertura, independiente del Congreso.
 - El **censo es editable** desde el panel; los valores del seed (las 6 mesas) son solo el punto de partida.
 - Las candidaturas son **configurables** desde el panel (nombre, siglas, orden, destacada, activa); no las incluyas fijas en el código.
 - El administrador puede introducir o corregir datos de cualquier mesa. **Toda modificación** escribe en la tabla de auditoría (quién, cuándo, valor anterior y nuevo).
 - Todas las horas se guardan en UTC y se muestran en `Europe/Madrid`. La hora de actualización debe ser visible en la vista pantallazo.
 - El recuento lo activa el administrador a mano; **no dependas del reloj para bloquear el recuento**. El modo DEMO/REAL **sí** usa el reloj (`ELECTION_DATE`) y puede forzarse a mano.
-- **Nunca escribir en datos reales en modo DEMO.** Las tablas de captura (participación, recuento y su auditoría) se tocan solo a través de la capa de captura (`src/captura.js`), que el gestor de datos ata al destino según el modo (DEMO → `data/demo.db`, REAL → `data/app.db`). Las rutas no abren conexiones ni escriben SQL sobre esas tablas. La configuración y su auditoría van siempre a `app.db`. `demo.db` solo contiene captura de prueba, se descarta al pasar a REAL y no se respalda.
+- **Nunca escribir en datos reales en modo DEMO.** Las tablas de captura (participación, recuento del Congreso y del Senado, y su auditoría) se tocan solo a través de la capa de captura (`src/captura.js`), que el gestor de datos ata al destino según el modo (DEMO → `data/demo.db`, REAL → `data/app.db`). Las rutas no abren conexiones ni escriben SQL sobre esas tablas. La configuración y su auditoría van siempre a `app.db`. `demo.db` solo contiene captura de prueba, se descarta al pasar a REAL y no se respalda.
 
 ## Seguridad
 

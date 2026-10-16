@@ -75,10 +75,10 @@ try {
     if (salud.json().modo !== 'DEMO') throw new Error(`modo inesperado: ${salud.json().modo}`);
     const entrada = await app.inject('/');
     if (entrada.statusCode !== 200 || !entrada.body.includes('name="pin"')) throw new Error('la pantalla de PIN no se sirve');
-    for (const recurso of ['/agente.js', '/resumen.js', '/recuento.js', '/candidaturas.js', '/estilos.css', '/candidaturas.css']) {
+    for (const recurso of ['/agente.js', '/resumen.js', '/recuento.js', '/candidaturas.js', '/senado.js', '/papeleta.js', '/estilos.css', '/candidaturas.css']) {
       if ((await app.inject(recurso)).statusCode !== 200) throw new Error(`falta public${recurso} en la imagen`);
     }
-    for (const protegida of ['/admin/resumen', '/pantallazo', '/admin/historico', '/admin/cortes', '/admin/candidaturas', '/admin/recuento']) {
+    for (const protegida of ['/admin/resumen', '/pantallazo', '/admin/historico', '/admin/cortes', '/admin/candidaturas', '/admin/recuento', '/admin/senado', '/admin/senado/candidatos']) {
       const r = await app.inject(protegida);
       if (r.statusCode !== 302 || r.headers.location !== '/admin/login') throw new Error(`${protegida} debe exigir sesión de administrador`);
     }
@@ -94,6 +94,13 @@ try {
       estado: 'cerrado', versionEsperada: 0, actor: { tipo: 'admin', id: 1 }, automatico: false,
     });
     if (!r || db.prepare('SELECT COUNT(*) AS n FROM recuento_mesa').get().n !== 0) throw new Error('el recuento demo llegó a app.db');
+    // El Senado (tablas senado_*) también va solo a demo.db
+    const candidato = Number(db.prepare("INSERT INTO candidato_senado (nombre, orden) VALUES ('Prueba', 1)").run().lastInsertRowid);
+    captura.guardarSenado({
+      mesaId: 1, valores: { modo: 'totales', votos: new Map([[candidato, 2]]), matriz: null, validas: 2, blancas: 0, nulas: 0 },
+      estado: 'borrador', versionEsperada: 0, actor: { tipo: 'admin', id: 1 }, automatico: false,
+    });
+    if (db.prepare('SELECT COUNT(*) AS n FROM senado_mesa').get().n !== 0) throw new Error('el Senado demo llegó a app.db');
     // Al pasar a REAL la demo se descarta
     app.datos.cambiarModo('REAL', { tipo: 'sistema', id: null });
     if (existsSync(path.join(dir, 'demo.db'))) throw new Error('demo.db no se eliminó al pasar a REAL');

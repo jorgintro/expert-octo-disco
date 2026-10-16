@@ -9,9 +9,6 @@ const RETRASO_MS = 4000;     // autoguardado tras el último cambio
 const ESPERA_MAX_MS = 15000; // y como mucho esto sin enviar si hay cambios pendientes
 const REINTENTO_MS = 8000;   // reintento si no hay conexión
 
-const form = document.querySelector('form.form-senado');
-if (form) (form.dataset.modo === 'sabana' ? iniciarSabana : iniciarTotales)(form);
-
 // ---------- utilidades ----------
 function almacen() {
   try {
@@ -492,3 +489,7 @@ function iniciarTotales(f) {
   window.addEventListener('beforeunload', (e) => { if (st.sucio && !st.bloqueado) { e.preventDefault(); e.returnValue = ''; } });
   actualizar();
 }
+
+// Arranque (al final: las constantes de arriba deben estar inicializadas).
+const form = document.querySelector('form.form-senado');
+if (form) (form.dataset.modo === 'sabana' ? iniciarSabana : iniciarTotales)(form);

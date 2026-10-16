@@ -156,6 +156,15 @@ Las fechas están en UTC. Si el contenedor no está arrancado, usa `docker compo
 - **Histórico** (panel → Más → *Histórico*): auditoría con hora de Madrid, filtrable por mesa, actor (agente, administrador, sistema) y acción; 25 por página. En REAL muestra lo de `app.db`; en DEMO, la configuración y la captura de la demo (con etiqueta DEMO). Nunca muestra PIN ni contraseñas.
 - **Cortes** (panel → Más → *Cortes*): cambia la hora de cada corte (HH:MM, en orden creciente). Si el corte ya tiene datos —reales o de demo— pide confirmación antes: los datos no cambian, solo la hora a la que se refieren. Es configuración compartida por DEMO y REAL.
 
+## Recuento del Senado (0.6.1)
+
+1. **Candidatos** (panel → Más → *Candidatos Senado*): cárgalos cuando se publiquen las listas, en el orden de la papeleta. Si el candidato es de un partido que también se presenta al Congreso, elígelo en «Partido»: hereda su color y su logo y forma lista con los demás de ese partido. Si no, pon una «Agrupación» (los candidatos con el mismo texto forman una lista) y un color propio. La estructura se bloquea al abrir el Senado por primera vez.
+2. **Abrir el Senado** (panel → *Recuento* → pestaña *Senado* → *Abrir*): interruptor propio, independiente del Congreso. En REAL avisa si aún no son las 20:00.
+3. **Agentes**: con el Senado abierto, en su mesa aparece «Abrir el recuento del Senado». Cada papeleta: tocan los nombres marcados (hasta 3) y **Confirmar papeleta**; **Lista completa** marca y confirma los 3 de un partido; **En blanco** (sin marcas) y **Nula** (más de 3 marcas u otros casos); **Deshacer última** corrige la última papeleta. Los contadores se guardan en el móvil y se envían solos por lotes: si se corta la conexión no se pierde nada. Si un agente prefiere teclear totales, puede usar «Totales» antes de guardar el primer dato.
+4. **Una mesa, un modo**: el primer dato fija «sábana» o «totales». Solo el administrador puede cambiarlo: ficha de la mesa → *Reiniciar el Senado de esta mesa…* (con confirmación; borra los contadores del Senado de esa mesa).
+5. **Administrador**: *Recuento → Senado* muestra resultados (votos y % sobre papeletas válidas, que no suman 100 porque cada elector marca hasta 3), votos por partido y la matriz candidato × mesa; tocando una celda se abre la ficha de la mesa (introducir, corregir, cerrar, reabrir).
+6. El pantallazo del Senado y el texto de WhatsApp llegarán en la 0.6.2. En DEMO todo va a `demo.db`.
+
 ## Recuento del Congreso y candidaturas (0.5)
 
 1. **Candidaturas** (panel → Más → *Candidaturas*): crea todas las de la circunscripción de Madrid con su posición en el orden de la Junta Electoral Central, marca las destacadas (PP, PSOE, VOX, Frente Amplio, Podemos), elige color y sube el logo (PNG, JPEG o WebP). La estructura se bloquea al activar el recuento.

@@ -370,3 +370,6 @@ details.rec-otros[open] .rec-flecha { transform: rotate(180deg); }
 .fila-total { display: flex; align-items: center; gap: 0.6rem; margin: 0 0 0.5rem; }
 .fila-total label { flex: 1; min-width: 0; margin: 0; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
 .fila-total .campo-numero { flex: none; width: 6.2rem; min-height: 2.9rem; margin: 0; padding: 0.3rem 0.5rem; font-size: 1.25rem; }
+.pestana.desactivada { color: var(--suave); border-color: var(--borde); background: #eee; font-weight: 400; cursor: not-allowed; }
+.lista-cab .boton-lista { width: auto; flex: none; margin: 0; }
+.lista-cab h2 { flex: 1 1 0; }

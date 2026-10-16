@@ -132,6 +132,13 @@ test('validación (sábana): coherencia marcas/votos comprobada en servidor y «
   assert.match(valida(SAB({ '1:1': 1 }, { 1: 2 })).errores.join(' '), /no coinciden|tiene más votos/);
 });
 
+test('validación (sábana): ningún candidato puede tener más votos que papeletas válidas aunque marcas y votos coincidan', () => {
+  // 2 papeletas de 3 marcas del PP (marcas 6) y votos 5+1+0 = 6: coherente, pero A1 tiene 5 votos con solo 2 válidas.
+  const r = valida(SAB({ '3:1': 2 }, { 1: 5, 2: 1 }));
+  assert.match(r.errores.join(' '), /A1 tiene más votos \(5\) que papeletas válidas \(2\)/);
+  assert.deepEqual(valida(SAB({ '3:1': 2 }, { 1: 2, 2: 2, 3: 2 })).errores, []);
+});
+
 test('avisos (no bloquean): difiere del total de votantes del Congreso o de la última participación', () => {
   const t = TOT(10, 2, 1, { 1: 10, 2: 10 });
   assert.deepEqual(valida(t, { votantesCongreso: 13, ultimaPart: { valor: 13, hora: '20:00' } }).avisos, []);

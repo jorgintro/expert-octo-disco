@@ -25,11 +25,14 @@ function insigniaLista(l) {
 const num = (t) => (/^\d+$/.test(String(t ?? '').trim()) ? Number(t) : null);
 
 // ---------- Pestañas Congreso | Senado ----------
-// abiertos: { congreso, senado } (para el agente solo se enseñan los abiertos); activa: 'congreso' | 'senado'.
+// congreso / senado: si esa elección está abierta (para el administrador, siempre). La cerrada se ve, pero
+// desactivada: así las dos pestañas están siempre y el agente sabe que existe.
 export function pestanas({ congresoUrl, senadoUrl, activa, congreso = true, senado = true }) {
-  if (!congreso || !senado) return '';
-  const p = (id, texto, url) => html`<a href="${url}" class="pestana${activa === id ? ' activa' : ''}"${activa === id ? crudo(' aria-current="page"') : ''}>${texto}</a>`;
-  return html`<nav class="pestanas" aria-label="Elección">${p('congreso', 'Congreso', congresoUrl)}${p('senado', 'Senado', senadoUrl)}</nav>`;
+  const p = (id, texto, url, abierta) =>
+    abierta
+      ? html`<a href="${url}" class="pestana${activa === id ? ' activa' : ''}"${activa === id ? crudo(' aria-current="page"') : ''}>${texto}</a>`
+      : html`<span class="pestana desactivada" aria-disabled="true">${texto} · cerrado</span>`;
+  return html`<nav class="pestanas" aria-label="Elección">${p('congreso', 'Congreso', congresoUrl, congreso)}${p('senado', 'Senado', senadoUrl, senado)}</nav>`;
 }
 
 // Campos ocultos con los contadores de la sábana (los actualiza public/senado.js; sin JavaScript no se puede contar).

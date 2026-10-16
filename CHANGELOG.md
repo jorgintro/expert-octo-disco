@@ -2,6 +2,19 @@
 
 Formato de versión 0.X.y. La 1.0.0 solo se publica el día de las elecciones.
 
+## 0.6.1 — Fase 0.6, primera mitad: recuento del Senado
+
+- **Candidatos del Senado** (panel → Más → *Candidatos Senado*): alta, edición, orden (posición en la papeleta), activo/inactivo, partido asociado (una candidatura del Congreso, de la que hereda color y logo), o, sin partido, agrupación y color propios. Sin candidatos fijos en el código ni en el seed. Configuración compartida por DEMO y REAL. No se borra un candidato con votos (solo se desactiva) ni una candidatura con candidatos del Senado asociados. Con el Senado activado, alta, borrado, orden y activo quedan bloqueados.
+- **Apertura propia del Senado** (`/admin/senado`), independiente del Congreso, a mano, auditada y con estado separado por modo (REAL empieza cerrado). Aviso (sin bloqueo) en REAL antes de las 20:00. Con el Senado cerrado los agentes no ven su formulario.
+- **Sábana a sábana** (agente): pestañas Congreso | Senado en la mesa; pantalla de papeleta con las listas por partido, toque para marcar o desmarcar (máximo 3), «Lista completa», «Confirmar papeleta», «En blanco», «Nula» y «Deshacer última»; contadores siempre visibles (contadas, válidas, blancas, nulas y votos por candidato). Contadores y última papeleta en el dispositivo; al servidor solo contadores, por lotes y con control de versión (conflicto: sumar las papeletas pendientes o descartarlas). Reglas de la papeleta compartidas entre navegador y servidor (`public/papeleta.js`).
+- **Totales** (respaldo, administrador y agente que lo prefiera): votos por candidato, papeletas válidas, en blanco y nulas, con comprobación en vivo y autoguardado. Una mesa usa **un modo**, fijado al guardar el primer dato; solo el administrador puede reiniciar el Senado de una mesa (confirmación y auditoría) para cambiarlo.
+- **Datos**: solo contadores (nunca el contenido de cada papeleta): votos por candidato; papeletas válidas por número de marcas × «mismo partido» (matriz para la estadística de bloque de la 0.6.2; «no disponible» en modo totales); blancas; nulas. Migraciones `004_senado.sql` (app.db) y `captura/003_senado.sql` (app.db y demo.db). Todo el SQL de captura sigue en `src/captura.js`; en DEMO solo se escribe en `demo.db`.
+- **Validaciones en servidor**: enteros ≥ 0; votos de un candidato ≤ válidas; válidas ≤ suma de votos ≤ 3 × válidas; (válidas + blancas + nulas) ≤ censo. Avisos al cerrar si difiere del total de votantes del Congreso o de la última participación. Cerrar siempre con confirmación; mesa cerrada no editable por el agente; lo del administrador no lo edita el agente; el administrador reabre.
+- **Administrador**: panel del Senado (mesas escrutadas n/N, votos por candidato con % sobre válidas y por partido, blancas, nulas, «Provisional», sondeo) y matriz candidato × mesa con ficha por mesa (introducir, corregir, cerrar, reabrir, reiniciar).
+- **Histórico**: acciones y detalles del Senado legibles; autoguardados ocultos por defecto.
+- `contarRegistrosDemo` cuenta también el recuento del Congreso y del Senado al avisar de lo que se pierde al salir de DEMO.
+- SPEC.md (modelo del Senado y decisiones de la 0.6.2), CLAUDE.md y README actualizados. Sin pantallazo del Senado todavía (0.6.2).
+
 ## 0.5.2 — Desglose de «Otros» en el pantallazo de recuento
 
 - **Pantallazo → Recuento**: la fila «Otros (n)» es ahora un desplegable (cerrado por defecto; flecha pequeña y discreta). Abierto, lista bajo la fila una línea compacta por candidatura no destacada (siglas, votos y %), en letra pequeña y sin logos, de más a menos votos y, con empate, por el orden de la candidatura. La fila sigue mostrando la suma; sin candidaturas pequeñas no aparece. Crece hacia abajo sin desbordar a 360–390 px.

@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import Database from 'better-sqlite3';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fijarSenadoAbierto, fijarAbierto } from '../src/recuentoEstado.js';
 import { listarCandidatos } from '../src/candidatosSenado.js';
@@ -223,6 +224,16 @@ test('cerrar mesa (totales): sin cuadre no cierra; cuadrada pide confirmación y
   assert.match(vista.body, /Mesa cerrada|está cerrada/);
 });
 
+test('pestañas: siempre las dos; la elección cerrada se ve desactivada y sin enlace', async () => {
+  const e = await montar();
+  e.abrir(); // solo el Senado abierto
+  const m = e.mesa('4-2-A');
+  const r = await getAgente(e.app, `/agente/mesa/${m.id}/senado`, e.ag.cookie);
+  assert.match(r.body, /aria-current="page">Senado/);
+  assert.match(r.body, /<span class="pestana desactivada" aria-disabled="true">Congreso · cerrado<\/span>/);
+  assert.doesNotMatch(r.body, /href="\/agente\/mesa\/\d+\/recuento" class="pestana/);
+});
+
 test('permisos: un agente no toca el Senado de mesas ajenas (ni por fetch) y sin CSRF no se guarda', async () => {
   const e = await montar(DEMO_ISO, { mesas: ['4-2-A'] });
   e.abrir();
@@ -307,4 +318,12 @@ test('REAL: el Senado escribe en app.db y el pantallazo del Congreso no cambia; 
     assert.equal(r.headers['cache-control'], 'no-cache');
   }
   assert.match((await get(e.app, '/papeleta.js')).headers['content-type'], /javascript/);
+});
+
+test('public/senado.js: el arranque va después de todas las constantes de primer nivel (si no, falla con «before initialization»)', () => {
+  const js = readFileSync(new URL('../public/senado.js', import.meta.url), 'utf8');
+  const arranque = js.indexOf('(form.dataset.modo === ');
+  assert.ok(arranque > 0);
+  const ultimaConst = Math.max(...[...js.matchAll(/^(?:const|let) \w+/gm)].map((m) => m.index));
+  assert.ok(arranque >= ultimaConst, 'el arranque debe ser lo último del fichero');
 });
