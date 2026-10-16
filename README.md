@@ -156,6 +156,10 @@ Las fechas están en UTC. Si el contenedor no está arrancado, usa `docker compo
 - **Histórico** (panel → Más → *Histórico*): auditoría con hora de Madrid, filtrable por mesa, actor (agente, administrador, sistema) y acción; 25 por página. En REAL muestra lo de `app.db`; en DEMO, la configuración y la captura de la demo (con etiqueta DEMO). Nunca muestra PIN ni contraseñas.
 - **Cortes** (panel → Más → *Cortes*): cambia la hora de cada corte (HH:MM, en orden creciente). Si el corte ya tiene datos —reales o de demo— pide confirmación antes: los datos no cambian, solo la hora a la que se refieren. Es configuración compartida por DEMO y REAL.
 
+## Kit del agente electoral (0.7)
+
+Checklist y guía de consejos en `/agente/kit` (PIN) y `/admin/kit` (administrador). El contenido está en `content/checklist.json` y `content/guia.json`: edítalos, valida con `npm test` (o arrancando la app, que no arranca si están mal) y despliega con `scripts/deploy.sh` (`content/` entra en la imagen). Los puntos con `[VERIFICAR]` (y `"verificar": true`) solo los ve el administrador; para publicarlos a los agentes, quita las dos marcas. El estado del checklist se guarda en el móvil de cada agente, no en el servidor.
+
 ## Recuento del Senado (0.6.1)
 
 1. **Candidatos** (panel → Más → *Candidatos Senado*): cárgalos cuando se publiquen las listas, en el orden de la papeleta. Si el candidato es de un partido que también se presenta al Congreso, elígelo en «Partido»: hereda su color y su logo y forma lista con los demás de ese partido. Si no, pon una «Agrupación» (los candidatos con el mismo texto forman una lista) y un color propio. La estructura se bloquea al abrir el Senado por primera vez.

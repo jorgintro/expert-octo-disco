@@ -1,0 +1,220 @@
+{
+  "fases": [
+    {
+      "id": "dia-antes",
+      "titulo": "El día antes",
+      "puntos": [
+        {
+          "id": "movil-cargado",
+          "texto": "Carga el móvil y lleva una batería externa o un cargador."
+        },
+        {
+          "id": "probar-app",
+          "texto": "Entra en la app con tus datos móviles y comprueba que ves tu mesa y que tu PIN funciona."
+        },
+        {
+          "id": "conocer-mesa",
+          "texto": "Confirma qué mesa te corresponde y quién es el Jefe de Colegio. Guarda su teléfono."
+        },
+        {
+          "id": "material-personal",
+          "texto": "Prepara libreta, bolígrafo, agua y algo de comer. La jornada es larga."
+        },
+        {
+          "id": "documentacion",
+          "texto": "[VERIFICAR] Prepara tu documentación de identidad y la acreditación que te corresponda como agente electoral. Revisa con el partido qué necesitas llevar.",
+          "verificar": true
+        },
+        {
+          "id": "instrucciones-partido",
+          "texto": "[VERIFICAR] Lee las instrucciones que el partido haya dado para la jornada.",
+          "verificar": true
+        }
+      ]
+    },
+    {
+      "id": "antes-abrir",
+      "titulo": "Antes de abrir",
+      "puntos": [
+        {
+          "id": "llegar-margen",
+          "texto": "Llega con margen y avisa al Jefe de Colegio de que ya estás en el colegio."
+        },
+        {
+          "id": "anotar-llegada",
+          "texto": "Anota en tu libreta la hora de llegada y quién preside tu mesa."
+        },
+        {
+          "id": "presentarse",
+          "texto": "[VERIFICAR] Preséntate a la presidencia de la mesa y presenta tu acreditación.",
+          "verificar": true
+        },
+        {
+          "id": "material-mesa",
+          "texto": "[VERIFICAR] Comprueba que la mesa dispone del material necesario antes de empezar.",
+          "verificar": true
+        },
+        {
+          "id": "normas-movil",
+          "texto": "[VERIFICAR] Averigua si hay normas sobre el uso del móvil dentro de la sala y cúmplelas.",
+          "verificar": true
+        }
+      ]
+    },
+    {
+      "id": "constitucion",
+      "titulo": "Constitución de la mesa",
+      "puntos": [
+        {
+          "id": "hora-constitucion",
+          "texto": "Anota la hora a la que se constituye la mesa."
+        },
+        {
+          "id": "censo-app",
+          "texto": "Comprueba que el censo de tu mesa en la app coincide con el de tu listado. Si no coincide, avisa al Jefe de Colegio."
+        },
+        {
+          "id": "acta-constitucion",
+          "texto": "[VERIFICAR] Revisa el acta de constitución y comprueba que está completa antes de firmar o dar tu conformidad.",
+          "verificar": true
+        },
+        {
+          "id": "miembros-mesa",
+          "texto": "[VERIFICAR] Comprueba que la mesa se ha constituido con los miembros que corresponden.",
+          "verificar": true
+        }
+      ]
+    },
+    {
+      "id": "votacion",
+      "titulo": "Votación",
+      "puntos": [
+        {
+          "id": "corte-10",
+          "texto": "Corte de las 10:00 informado en la app."
+        },
+        {
+          "id": "corte-12",
+          "texto": "Corte de las 12:00 informado en la app."
+        },
+        {
+          "id": "corte-14",
+          "texto": "Corte de las 14:00 informado en la app."
+        },
+        {
+          "id": "corte-16",
+          "texto": "Corte de las 16:00 informado en la app."
+        },
+        {
+          "id": "corte-18",
+          "texto": "Corte de las 18:00 informado en la app."
+        },
+        {
+          "id": "corte-20",
+          "texto": "Corte de las 20:00 informado en la app."
+        },
+        {
+          "id": "anotar-incidencias",
+          "texto": "Anota cada incidencia con su hora y qué ha ocurrido. No apuntes datos personales de los votantes."
+        },
+        {
+          "id": "relevo",
+          "texto": "Si necesitas un relevo o un descanso, avisa al Jefe de Colegio con tiempo."
+        },
+        {
+          "id": "secreto-voto",
+          "texto": "[VERIFICAR] Vigila que se respeta el secreto del voto y el orden en la sala.",
+          "verificar": true
+        },
+        {
+          "id": "reclamaciones-votacion",
+          "texto": "[VERIFICAR] Si hay algo que reclamar durante la votación, averigua cómo y cuándo se hace.",
+          "verificar": true
+        }
+      ]
+    },
+    {
+      "id": "cierre",
+      "titulo": "Cierre de la votación",
+      "puntos": [
+        {
+          "id": "hora-cierre",
+          "texto": "Anota la hora a la que se cierra la votación."
+        },
+        {
+          "id": "ultimo-corte",
+          "texto": "Informa en la app el último corte de participación de tu mesa."
+        },
+        {
+          "id": "esperar-recuento",
+          "texto": "Espera a que el Jefe de Colegio abra el recuento en la app antes de introducir resultados."
+        },
+        {
+          "id": "cierre-procedimiento",
+          "texto": "[VERIFICAR] Comprueba que el cierre de la votación se hace según el procedimiento.",
+          "verificar": true
+        }
+      ]
+    },
+    {
+      "id": "escrutinio",
+      "titulo": "Escrutinio",
+      "puntos": [
+        {
+          "id": "recuento-congreso",
+          "texto": "Introduce en la app el recuento del Congreso: votos por candidatura, en blanco y nulos. La app avisa si la suma no cuadra."
+        },
+        {
+          "id": "recuento-senado",
+          "texto": "Introduce en la app el recuento del Senado, papeleta a papeleta o en totales según lo que indique el Jefe de Colegio."
+        },
+        {
+          "id": "revisar-cifras",
+          "texto": "Revisa las cifras antes de cerrar la mesa en la app."
+        },
+        {
+          "id": "cerrar-mesa-app",
+          "texto": "Cierra la mesa en la app cuando el recuento esté revisado."
+        },
+        {
+          "id": "presenciar-escrutinio",
+          "texto": "[VERIFICAR] Presencia el escrutinio y comprueba que se hace según el procedimiento.",
+          "verificar": true
+        },
+        {
+          "id": "criterio-nulos",
+          "texto": "[VERIFICAR] Averigua el criterio para considerar un voto nulo o en blanco y anota cualquier discrepancia.",
+          "verificar": true
+        },
+        {
+          "id": "reclamaciones-escrutinio",
+          "texto": "[VERIFICAR] Si hay algo que reclamar durante el escrutinio, averigua cómo y cuándo se hace.",
+          "verificar": true
+        }
+      ]
+    },
+    {
+      "id": "despues",
+      "titulo": "Después del escrutinio",
+      "puntos": [
+        {
+          "id": "avisar-jefe",
+          "texto": "Avisa al Jefe de Colegio de que tu mesa está cerrada en la app."
+        },
+        {
+          "id": "anotar-final",
+          "texto": "Anota la hora de salida y las incidencias finales."
+        },
+        {
+          "id": "cerrar-sesion",
+          "texto": "Si has usado un móvil compartido, sal de la app."
+        },
+        {
+          "id": "acta-final",
+          "texto": "[VERIFICAR] Revisa el acta final antes de firmarla y pide la copia que te corresponda.",
+          "verificar": true
+        }
+      ]
+    }
+  ]
+}

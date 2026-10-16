@@ -132,6 +132,7 @@ export function paginaAdmin(titulo, { csrf, aviso: textoAviso, error, hojas = []
       <a href="/admin/senado/candidatos">Candidatos Senado</a>
       <a href="/admin/cortes">Cortes</a>
       <a href="/admin/historico">Histórico</a>
+      <a href="/admin/kit">Kit del agente</a>
       <a href="/admin/modo">Modo</a>
       <a href="/admin/bloqueos">Bloqueos</a>
       <a href="/admin/password">Contraseña</a>
@@ -156,6 +157,7 @@ export function paginaAgente(titulo, { csrf, aviso: textoAviso, error, agente, h
     titulo,
     html`<header class="cabecera-agente">
   <span class="agente-nombre">${agente.nombre}</span>
+  <a class="kit-enlace" href="/agente/kit">Kit</a>
   <form method="post" action="/agente/salir">
     <input type="hidden" name="_csrf" value="${csrf}">
     <button type="submit" class="boton boton-sec">Salir</button>

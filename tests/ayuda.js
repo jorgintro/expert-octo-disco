@@ -32,9 +32,9 @@ export function crearReloj(iso = '2026-10-20T10:00:00Z') {
   return { ahora: () => t, fijar: (nuevo) => { t = Date.parse(nuevo); } };
 }
 
-export async function crearEntorno({ reloj = crearReloj() } = {}) {
+export async function crearEntorno({ reloj = crearReloj(), configExtra = {} } = {}) {
   const dataDir = crearDirectorioTemporal();
-  const config = { ...CONFIG, dataDir };
+  const config = { ...CONFIG, dataDir, ...configExtra };
   const db = abrirDb(':memory:');
   migrarApp(db);
   await sembrar(db, config);

@@ -17,6 +17,7 @@ import rutasSenadoCandidatos from './senadoCandidatos.js';
 import rutasResumen from './resumen.js';
 import rutasHistorico from './historico.js';
 import rutasCortes from './cortes.js';
+import { rutasKitAdmin } from './kit.js';
 
 const MIN_PASSWORD = 10;
 let hashFicticio = null; // para igualar tiempos cuando el usuario no existe
@@ -139,6 +140,7 @@ export default async function rutasAdmin(app) {
 <p><a class="boton boton-sec" href="/admin/participacion">Participación: introducir o corregir datos</a></p>
 <p><a class="boton boton-sec" href="/admin/historico">Histórico de cambios</a></p>
 <p><a class="boton boton-sec" href="/admin/cortes">Horas de los cortes</a></p>
+<p><a class="boton boton-sec" href="/admin/kit">Kit del agente electoral</a></p>
 <p><a class="boton boton-sec" href="/admin/modo">Modo de trabajo (DEMO / REAL)</a></p>`.texto
         )
       );
@@ -206,5 +208,6 @@ export default async function rutasAdmin(app) {
     await priv.register(rutasSenadoCandidatos);
     await priv.register(rutasModo);
     await priv.register(rutasBloqueos);
+    await priv.register(rutasKitAdmin);
   });
 }

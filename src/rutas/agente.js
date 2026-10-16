@@ -17,6 +17,8 @@ import { horaMadrid } from '../tiempo.js';
 import { aviso, html, pagina, paginaAgente, responder } from '../vistas.js';
 import { autorDe, bloqueConfirmar, formularioDato, selectorCortes, tablaHistorial } from '../vistasDato.js';
 
+import { rutasKitAgente } from './kit.js';
+
 const COOKIE = 'sid_agente'; // distinta de la del administrador: ambos pueden convivir en un navegador
 
 function formPin({ csrf, error } = {}) {
@@ -112,6 +114,8 @@ export default async function rutasAgente(app) {
       req.ctx = (extra = {}) => ({ csrf: actual.sesion.csrf, aviso: aviso(req.query?.ok), agente: actual.agente, ...extra });
       reply.header('Cache-Control', 'no-store');
     });
+
+    await priv.register(rutasKitAgente);
 
     const mesasDelAgente = (agenteId) =>
       db

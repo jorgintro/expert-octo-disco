@@ -1,0 +1,122 @@
+{
+  "secciones": [
+    {
+      "id": "que-vigilar",
+      "titulo": "Qué vigilar",
+      "intro": "Mira con calma y sin discutir: si ves algo raro, anótalo y avisa al Jefe de Colegio.",
+      "puntos": [
+        {
+          "texto": "Que la mesa trabaja con orden y sin interrupciones."
+        },
+        {
+          "texto": "[VERIFICAR] Apertura y cierre de la votación: horas y procedimiento.",
+          "verificar": true
+        },
+        {
+          "texto": "[VERIFICAR] Respeto del secreto del voto.",
+          "verificar": true
+        },
+        {
+          "texto": "[VERIFICAR] Identificación de los votantes y cómo se registra el voto.",
+          "verificar": true
+        }
+      ]
+    },
+    {
+      "id": "que-anotar",
+      "titulo": "Qué anotar",
+      "puntos": [
+        {
+          "texto": "La hora de cada incidencia, qué ha pasado y quién estaba presente."
+        },
+        {
+          "texto": "Los totales de participación en cada corte, para poder contrastarlos con la app."
+        },
+        {
+          "texto": "No anotes datos personales de los votantes (nombre, DNI) ni en tu libreta ni en WhatsApp."
+        },
+        {
+          "texto": "[VERIFICAR] Qué hay que anotar para una posible reclamación.",
+          "verificar": true
+        }
+      ]
+    },
+    {
+      "id": "incidencias",
+      "titulo": "Incidencias habituales",
+      "intro": "Antes de actuar, avisa al Jefe de Colegio.",
+      "puntos": [
+        {
+          "texto": "La app no carga: recarga la página; si sigue igual, prueba con datos móviles en lugar de wifi."
+        },
+        {
+          "texto": "No hay cobertura: apunta el dato en la libreta y dáselo al Jefe de Colegio, que puede introducirlo desde su panel."
+        },
+        {
+          "texto": "Te has equivocado en un dato: vuelve a introducirlo con el valor correcto. Si el dato aparece bloqueado, es que lo ha introducido el administrador: avísale."
+        },
+        {
+          "texto": "Has olvidado tu PIN o no te deja entrar: pide al Jefe de Colegio que te genere uno nuevo."
+        },
+        {
+          "texto": "[VERIFICAR] Qué hacer si se discute la identidad de un votante o su derecho a votar.",
+          "verificar": true
+        },
+        {
+          "texto": "[VERIFICAR] Qué hacer ante un incidente que altere el orden en la sala.",
+          "verificar": true
+        },
+        {
+          "texto": "[VERIFICAR] Cómo presentar una reclamación o protesta.",
+          "verificar": true
+        }
+      ]
+    },
+    {
+      "id": "usar-app",
+      "titulo": "Cómo usar esta app",
+      "intro": "Pensada para el móvil. Funciona mejor con buena cobertura, pero no pierdes lo escrito si falla el envío.",
+      "puntos": [
+        {
+          "texto": "Participación: en cada corte, escribe el total acumulado de votantes de tu mesa (no el parcial del tramo). La app rechaza cifras mayores que el censo o menores que el corte anterior."
+        },
+        {
+          "texto": "Recuento: cuando el Jefe de Colegio lo abre, aparece en tu mesa. En el Congreso, la suma de candidaturas, en blanco y nulos debe ser igual al total de votantes."
+        },
+        {
+          "texto": "Senado: cada elector puede marcar varios nombres, así que no se valida con esa suma. Introdúcelo como te indique el Jefe de Colegio."
+        },
+        {
+          "texto": "Cierra la mesa en la app solo cuando hayas revisado las cifras. Mientras está en borrador puedes corregirla."
+        },
+        {
+          "texto": "Pantallazos y WhatsApp: los prepara el Jefe de Colegio desde su panel. Si te piden un dato, dilo por el canal acordado y no compartas capturas por tu cuenta."
+        },
+        {
+          "texto": "El banner naranja «MODO DEMO» indica datos de prueba. El día de las elecciones no debe aparecer; si lo ves, avisa al Jefe de Colegio."
+        }
+      ]
+    },
+    {
+      "id": "consejos",
+      "titulo": "Consejos prácticos",
+      "puntos": [
+        {
+          "texto": "Silencia las notificaciones del móvil y pon el brillo al mínimo cómodo para ahorrar batería."
+        },
+        {
+          "texto": "Bebe agua, come algo y pide relevo si lo necesitas: un error por cansancio cuesta más que un descanso."
+        },
+        {
+          "texto": "Tu PIN es personal: no lo compartas ni lo escribas en lugares visibles."
+        },
+        {
+          "texto": "Ante la duda, pregunta al Jefe de Colegio antes de actuar."
+        },
+        {
+          "texto": "Habla con calma y sin enfrentarte a nadie; tu papel es observar y anotar."
+        }
+      ]
+    }
+  ]
+}
