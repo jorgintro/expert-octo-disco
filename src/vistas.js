@@ -34,7 +34,7 @@ export function html(trozos, ...valores) {
   return new Crudo(salida);
 }
 
-export function pagina(titulo, cuerpo) {
+export function pagina(titulo, cuerpo, { claseBody = '' } = {}) {
   return `<!doctype html>
 <html lang="es">
 <head>
@@ -44,7 +44,7 @@ export function pagina(titulo, cuerpo) {
 <title>${esc(titulo)}</title>
 <link rel="stylesheet" href="/estilos.css">
 </head>
-<body>
+<body${claseBody ? ` class="${esc(claseBody)}"` : ''}>
 <!--MODO_BANNER-->
 <main class="contenedor">
 ${cuerpo}
@@ -58,12 +58,14 @@ ${cuerpo}
 // TODAS las pantallas (administración, agente, pantallazo...) muestran el modo sin tocar cada ruta.
 export function bannerModo(modo) {
   return modo === 'DEMO'
-    ? '<div class="banner-demo" role="status">MODO DEMO - datos de prueba</div>'
-    : '<div class="barra-real" aria-hidden="true"></div>';
+    ? '<div id="banner-modo" class="banner-demo" role="status">MODO DEMO - datos de prueba</div>'
+    : '<div id="banner-modo" class="barra-real" aria-hidden="true"></div>';
 }
 export const pieModo = (modo) => (modo === 'DEMO' ? ' · <strong>MODO DEMO</strong>' : ' · Modo REAL');
 
 const AVISOS = {
+  cortes_guardados: 'Horas de los cortes guardadas.',
+  cortes_sin_cambios: 'No has cambiado ninguna hora.',
   dato_guardado: 'Dato guardado.',
   dato_sin_cambios: 'El dato ya estaba guardado así.',
   dato_vaciado: 'Dato vaciado.',
@@ -87,17 +89,26 @@ export function paginaAdmin(titulo, { csrf, aviso: textoAviso, error } = {}, cue
   return pagina(
     titulo,
     html`<nav class="nav" aria-label="Administración">
-  <a href="/admin">Inicio</a>
-  <a href="/admin/mesas">Mesas</a>
-  <a href="/admin/agentes">Agentes</a>
+  <a href="/admin/resumen">Resumen</a>
   <a href="/admin/participacion">Participación</a>
-  <a href="/admin/modo">Modo</a>
-  <a href="/admin/bloqueos">Bloqueos</a>
-  <a href="/admin/password">Contraseña</a>
+  <a href="/pantallazo">Pantallazo</a>
   <form method="post" action="/admin/logout">
     <input type="hidden" name="_csrf" value="${csrf}">
     <button type="submit" class="boton boton-sec">Salir</button>
   </form>
+  <details class="nav-mas">
+    <summary>Más</summary>
+    <div class="nav-mas-enlaces">
+      <a href="/admin">Inicio</a>
+      <a href="/admin/mesas">Mesas</a>
+      <a href="/admin/agentes">Agentes</a>
+      <a href="/admin/cortes">Cortes</a>
+      <a href="/admin/historico">Histórico</a>
+      <a href="/admin/modo">Modo</a>
+      <a href="/admin/bloqueos">Bloqueos</a>
+      <a href="/admin/password">Contraseña</a>
+    </div>
+  </details>
 </nav>
 <h1>${titulo}</h1>
 ${textoAviso ? html`<p class="aviso" role="status">${textoAviso}</p>` : ''}

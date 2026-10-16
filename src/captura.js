@@ -3,7 +3,7 @@
 // atado al destino correcto según el modo (DEMO -> demo.db, REAL -> app.db). Así, en DEMO no existe
 // ningún camino de código hacia las tablas de captura reales.
 import path from 'node:path';
-import { auditar } from './auditoria.js';
+import { accionesDistintas, auditar, contarAuditoria, listarAuditoria } from './auditoria.js';
 
 export const NOMBRE_DEMO = 'demo.db';
 
@@ -94,6 +94,17 @@ export class Captura {
     })();
   }
 
+  // Auditoría de la base de este destino (en demo.db, solo la de captura de prueba).
+  auditoria(filtros, { limite }) {
+    return listarAuditoria(this.#conexion(), filtros, { limite });
+  }
+  contarAuditoria(filtros) {
+    return contarAuditoria(this.#conexion(), filtros);
+  }
+  accionesAuditoria() {
+    return accionesDistintas(this.#conexion());
+  }
+
   // Vacía una celda (solo el administrador; lo exige la capa de servicio). Se audita.
   eliminarParticipacion({ mesaId, corteId, actor }) {
     const db = this.#conexion();
@@ -115,4 +126,9 @@ export class Captura {
       return true;
     })();
   }
+}
+
+// Cuántos datos hay en cada corte de una base de captura: Map corteId -> n. Solo lectura.
+export function contarPorCorte(db) {
+  return new Map(db.prepare('SELECT corte_id, COUNT(*) AS n FROM participacion GROUP BY corte_id').all().map((f) => [f.corte_id, f.n]));
 }

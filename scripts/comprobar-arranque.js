@@ -75,8 +75,13 @@ try {
     if (salud.json().modo !== 'DEMO') throw new Error(`modo inesperado: ${salud.json().modo}`);
     const entrada = await app.inject('/');
     if (entrada.statusCode !== 200 || !entrada.body.includes('name="pin"')) throw new Error('la pantalla de PIN no se sirve');
-    const js = await app.inject('/agente.js');
-    if (js.statusCode !== 200) throw new Error('falta public/agente.js en la imagen');
+    for (const recurso of ['/agente.js', '/resumen.js', '/estilos.css']) {
+      if ((await app.inject(recurso)).statusCode !== 200) throw new Error(`falta public${recurso} en la imagen`);
+    }
+    for (const protegida of ['/admin/resumen', '/pantallazo', '/admin/historico', '/admin/cortes']) {
+      const r = await app.inject(protegida);
+      if (r.statusCode !== 302 || r.headers.location !== '/admin/login') throw new Error(`${protegida} debe exigir sesión de administrador`);
+    }
     if (!existsSync(path.join(dir, 'demo.db'))) throw new Error('no se creó demo.db en modo DEMO');
     // Captura de prueba: debe ir a demo.db y no tocar app.db
     const captura = app.datos.captura();

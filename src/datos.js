@@ -11,7 +11,7 @@
 import { existsSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { auditar } from './auditoria.js';
-import { Captura, NOMBRE_DEMO } from './captura.js';
+import { Captura, NOMBRE_DEMO, contarPorCorte } from './captura.js';
 import { abrirDb, migrarDemo } from './db.js';
 import { DEMO, REAL, modoEfectivo } from './modo.js';
 
@@ -190,6 +190,12 @@ export class GestorDatos {
   contarRegistrosDemo() {
     if (!this.#demo) return 0;
     return TABLAS_CAPTURA.reduce((suma, tabla) => suma + this.#demo.prepare(`SELECT COUNT(*) AS n FROM ${tabla}`).get().n, 0);
+  }
+
+  // Datos por corte en ambos destinos, SOLO LECTURA (para avisar antes de cambiar la hora de un corte,
+  // que es configuración compartida por DEMO y REAL). Nunca escribe.
+  contarDatosPorCorte() {
+    return { real: contarPorCorte(this.#db), demo: this.#demo ? contarPorCorte(this.#demo) : new Map() };
   }
 
   cerrar() {
