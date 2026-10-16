@@ -19,8 +19,8 @@ const nuevaDb = () => {
 test('las migraciones son idempotentes', () => {
   const db = nuevaDb();
   migrarApp(db);
-  assert.equal(db.prepare('SELECT COUNT(*) n FROM migracion').get().n, 2);
-  assert.equal(db.prepare('SELECT COUNT(*) n FROM migracion_captura').get().n, 1);
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM migracion').get().n, 3);
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM migracion_captura').get().n, 2);
 });
 
 test('la base de datos usa WAL y claves foráneas', () => {

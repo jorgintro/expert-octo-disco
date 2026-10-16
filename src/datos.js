@@ -11,9 +11,10 @@
 import { existsSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { auditar } from './auditoria.js';
-import { Captura, NOMBRE_DEMO, contarPorCorte } from './captura.js';
+import { Captura, NOMBRE_DEMO, contarPorCandidatura, contarPorCorte } from './captura.js';
 import { abrirDb, migrarDemo } from './db.js';
 import { DEMO, REAL, modoEfectivo } from './modo.js';
+import { reiniciarBanderasDemo } from './recuentoEstado.js';
 
 export { NOMBRE_DEMO };
 export const TABLAS_CAPTURA = ['participacion']; // la 0.5 añadirá las de recuento
@@ -87,12 +88,14 @@ export class GestorDatos {
     borrarArchivosDemo(this.#ruta, this.#db.name);
     this.#demo = abrirDb(this.#ruta);
     migrarDemo(this.#demo);
+    reiniciarBanderasDemo(this.#db); // la demo empieza de cero: recuento cerrado y sin activar
     this.generacion++;
   }
   #eliminarDemo() {
     this.#demo?.close();
     this.#demo = null;
     borrarArchivosDemo(this.#ruta, this.#db.name);
+    reiniciarBanderasDemo(this.#db);
     this.generacion++;
   }
   // Deja demo.db coherente con el modo: DEMO => existe y está abierta; REAL => no existe.
@@ -196,6 +199,11 @@ export class GestorDatos {
   // que es configuración compartida por DEMO y REAL). Nunca escribe.
   contarDatosPorCorte() {
     return { real: contarPorCorte(this.#db), demo: this.#demo ? contarPorCorte(this.#demo) : new Map() };
+  }
+
+  // Votos por candidatura en ambos destinos, SOLO LECTURA (para impedir borrar una candidatura con votos).
+  contarVotosPorCandidatura() {
+    return { real: contarPorCandidatura(this.#db), demo: this.#demo ? contarPorCandidatura(this.#demo) : new Map() };
   }
 
   cerrar() {
