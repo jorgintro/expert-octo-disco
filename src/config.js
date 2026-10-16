@@ -1,4 +1,7 @@
+import { esFechaValida } from './tiempo.js';
+
 const EJEMPLO = 'cambiame';
+export const FECHA_ELECCIONES_DEFECTO = '2026-11-29';
 
 // Lee y valida la configuración. Falla si faltan secretos o conservan el valor de ejemplo.
 export function cargarConfig(env = process.env) {
@@ -23,7 +26,11 @@ export function cargarConfig(env = process.env) {
     adminPasswordInitial: secreto('ADMIN_PASSWORD_INITIAL', 10),
     cookieSegura: env.COOKIE_SECURE !== 'false',
     trustProxy: 2,
+    fechaElecciones: (env.ELECTION_DATE ?? FECHA_ELECCIONES_DEFECTO).trim(),
   };
+  if (!esFechaValida(config.fechaElecciones)) {
+    errores.push('ELECTION_DATE debe ser una fecha válida con formato AAAA-MM-DD (por ejemplo 2026-11-29)');
+  }
 
   // Saltos de proxy de confianza entre la app y el cliente (ver README, "IP real del cliente").
   // 2 = Cloudflare + Nginx Proxy Manager; 1 = solo NPM; 0 = acceso directo sin proxy.

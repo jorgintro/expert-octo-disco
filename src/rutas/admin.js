@@ -1,14 +1,16 @@
 import argon2 from 'argon2';
+import { MAX_PASSWORD, verificarPasswordAdmin } from '../auth.js';
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { auditar } from '../auditoria.js';
 import { estaBloqueada, limpiarFallos, registrarFallo } from '../limiteIntentos.js';
 import { borrarSesion, borrarSesionesDeActor, buscarSesion, crearSesion, DURACION_SESION_MS } from '../sesiones.js';
 import { aviso, html, pagina, paginaAdmin, responder } from '../vistas.js';
 import rutasAgentes from './agentes.js';
+import rutasBloqueos from './bloqueos.js';
 import rutasMesas from './mesas.js';
+import rutasModo from './modo.js';
 
 const MIN_PASSWORD = 10;
-const MAX_PASSWORD = 200;
 let hashFicticio = null; // para igualar tiempos cuando el usuario no existe
 
 const textoSeguro = (a, b) => {
@@ -76,7 +78,7 @@ export default async function rutasAdmin(app) {
       return loginHtml(reply, { error: 'La página ha caducado. Vuelve a intentarlo.' }, 403);
     }
     const ip = req.ip;
-    if (estaBloqueada(db, ip)) {
+    if (estaBloqueada(db, 'admin', ip)) {
       return loginHtml(reply, { error: 'Demasiados intentos fallidos. Espera unos minutos antes de volver a probar.' }, 429);
     }
     const usuario = String(req.body?.usuario ?? '').trim().slice(0, 100);
@@ -94,11 +96,11 @@ export default async function rutasAdmin(app) {
     }
 
     if (!correcto) {
-      registrarFallo(db, ip);
+      registrarFallo(db, 'admin', ip);
       return loginHtml(reply, { error: 'Usuario o contraseña incorrectos.', usuario }, 401);
     }
 
-    limpiarFallos(db, ip);
+    limpiarFallos(db, 'admin', ip);
     borrarSesion(db, config.sessionSecret, req.cookies.sid);
     const { token } = crearSesion(db, config.sessionSecret, 'admin', admin.id);
     auditar(db, { tipo: 'admin', id: admin.id }, 'login', 'admin', admin.id);
@@ -141,7 +143,8 @@ export default async function rutasAdmin(app) {
   <p><strong>${agentes.n}</strong> agentes activos</p>
 </section>
 <p><a class="boton" href="/admin/mesas">Mesas y censo</a></p>
-<p><a class="boton" href="/admin/agentes">Agentes y PIN</a></p>`.texto
+<p><a class="boton" href="/admin/agentes">Agentes y PIN</a></p>
+<p><a class="boton boton-sec" href="/admin/modo">Modo de trabajo (DEMO / REAL)</a></p>`.texto
         )
       );
     });
@@ -172,12 +175,15 @@ export default async function rutasAdmin(app) {
       const actual = String(req.body.actual ?? '');
       const nueva = String(req.body.nueva ?? '');
       const repetir = String(req.body.repetir ?? '');
-      const fallo = (error) => {
+      const fallo = (error, codigo = 422) => {
         const ctx = req.ctx({ error });
-        return responder(reply, paginaAdmin('Cambiar contraseña', ctx, formPassword(ctx).texto), 422);
+        return responder(reply, paginaAdmin('Cambiar contraseña', ctx, formPassword(ctx).texto), codigo);
       };
-      const fila = db.prepare('SELECT password_hash FROM admin WHERE id = ?').get(req.admin.id);
-      if (actual.length === 0 || actual.length > MAX_PASSWORD || !(await argon2.verify(fila.password_hash, actual).catch(() => false))) {
+      if (estaBloqueada(db, 'admin', req.ip)) {
+        return fallo('Demasiados intentos fallidos. Espera unos minutos o pide que desbloqueen tu IP.', 429);
+      }
+      if (!(await verificarPasswordAdmin(db, req.admin.id, actual))) {
+        registrarFallo(db, 'admin', req.ip);
         return fallo('La contraseña actual no es correcta.');
       }
       if (nueva.length < MIN_PASSWORD) return fallo(`La contraseña nueva debe tener al menos ${MIN_PASSWORD} caracteres.`);
@@ -195,5 +201,7 @@ export default async function rutasAdmin(app) {
 
     await priv.register(rutasMesas);
     await priv.register(rutasAgentes);
+    await priv.register(rutasModo);
+    await priv.register(rutasBloqueos);
   });
 }

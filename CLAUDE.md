@@ -47,11 +47,12 @@ Miniaplicación web mobile-first, autoalojada, para que los agentes de un colegi
 - Las candidaturas son **configurables** desde el panel (nombre, siglas, orden, destacada, activa); no las incluyas fijas en el código.
 - El administrador puede introducir o corregir datos de cualquier mesa. **Toda modificación** escribe en la tabla de auditoría (quién, cuándo, valor anterior y nuevo).
 - Todas las horas se guardan en UTC y se muestran en `Europe/Madrid`. La hora de actualización debe ser visible en la vista pantallazo.
-- El recuento lo activa el administrador a mano; no dependas del reloj del servidor para bloquearlo.
+- El recuento lo activa el administrador a mano; **no dependas del reloj para bloquear el recuento**. El modo DEMO/REAL **sí** usa el reloj (`ELECTION_DATE`) y puede forzarse a mano.
+- **Nunca escribir en datos reales en modo DEMO.** Las tablas de captura (participación, recuento y su auditoría) se tocan solo a través de la capa de captura (`src/captura.js`), que el gestor de datos ata al destino según el modo (DEMO → `data/demo.db`, REAL → `data/app.db`). Las rutas no abren conexiones ni escriben SQL sobre esas tablas. La configuración y su auditoría van siempre a `app.db`. `demo.db` solo contiene captura de prueba, se descarta al pasar a REAL y no se respalda.
 
 ## Seguridad
 
-- PIN de 6 dígitos para agentes: se guarda solo un HMAC (con `PIN_HMAC_SECRET`), único; se muestra en claro únicamente al generarlo. Límite de intentos y bloqueo temporal por IP.
+- PIN de 6 dígitos para agentes: se guarda solo un HMAC (con `PIN_HMAC_SECRET`), único; se muestra en claro únicamente al generarlo. Límite de intentos y bloqueo temporal por IP, con contadores **separados** para el PIN de agentes y para la contraseña de administrador (los agentes comparten IP pública): un fallo de uno nunca bloquea al otro.
 - Contraseña de administrador con argon2 o bcrypt.
 - Cookies de sesión `HttpOnly`, `Secure`, `SameSite=Lax`; protección CSRF en operaciones con sesión.
 - Validación **siempre en servidor**; consultas parametrizadas; cabeceras de seguridad.
@@ -81,7 +82,7 @@ Miniaplicación web mobile-first, autoalojada, para que los agentes de un colegi
 ├── public/              (CSS y JS mínimo del cliente)
 ├── scripts/             (seed, copia de seguridad)
 ├── tests/
-└── data/                (volumen de SQLite; en .gitignore)
+└── data/                (volumen: app.db y, solo en modo DEMO, demo.db; en .gitignore)
 ```
 
 ## Despliegue
@@ -89,7 +90,7 @@ Miniaplicación web mobile-first, autoalojada, para que los agentes de un colegi
 - `docker compose up -d --build` debe bastar para levantar la app.
 - Endpoint `/healthz` (para comprobaciones) y `/version`.
 - El build de Docker ejecuta `scripts/comprobar-arranque.js` (better-sqlite3 con WAL, argon2, migraciones y seed): un módulo nativo incompatible debe romper el **build**, no el despliegue. `scripts/smoke.sh` repite la prueba sobre la imagen construida y `scripts/deploy.sh` despliega con copia previa de la base.
-- Documenta en `README.md` la configuración del proxy host en Nginx Proxy Manager (dominio, esquema `http`, host y puerto del contenedor, certificado SSL, forzar HTTPS) y la copia de seguridad (`sqlite3 data/app.db ".backup ..."`).
+- Documenta en `README.md` la configuración del proxy host en Nginx Proxy Manager (dominio, esquema `http`, host y puerto del contenedor, certificado SSL, forzar HTTPS) y la copia de seguridad (`sqlite3 data/app.db ".backup ..."`; `demo.db` no se respalda).
 
 ## Qué NO hacer
 

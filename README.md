@@ -47,6 +47,29 @@ scripts/smoke.sh               # prueba de humo de la imagen ya construida (tiro
 
 `smoke.sh` comprueba sobre la imagen: versión de Node, usuario uid 1000, `sqlite3`, better-sqlite3/argon2/app (`comprobar-arranque.js`) y que `./data` es escribible. Un segfault (código 139) se señala expresamente.
 
+## Modo de trabajo: DEMO / REAL (`ELECTION_DATE`)
+
+Para practicar sin riesgo para los datos reales, la app trabaja en dos modos:
+
+| | DEMO | REAL |
+|---|------|------|
+| Captura (participación, recuento) | `data/demo.db` (datos de prueba) | `data/app.db` (datos reales) |
+| Configuración (mesas, censos, agentes, PIN...) | `data/app.db` | `data/app.db` |
+| Banner | naranja fijo «MODO DEMO - datos de prueba» | indicador discreto |
+
+- **Automático:** `ELECTION_DATE` (AAAA-MM-DD, hora de Madrid, por defecto `2026-11-29`). Antes de esa fecha la app está en DEMO; **desde las 00:00 de ese día pasa a REAL sola** y anula cualquier modo fijado a mano antes. Se evalúa al atender peticiones (no hay cron). Si cambias la fecha, edita `.env` y recrea el contenedor: `docker compose up -d --force-recreate`.
+- **Manual:** panel → **Modo** (pantalla «Modo de trabajo»). Pasar a DEMO o REAL pide la contraseña de administrador y escribir `DEMO` o `REAL`. Desde el día de las elecciones, pasar a DEMO exige escribir `DEMO EN JORNADA` y queda en la auditoría. «Reiniciar demo» (solo en DEMO) vacía los datos de prueba.
+- **Descarte:** al entrar en DEMO se parte de una `demo.db` vacía; al pasar a REAL se **elimina** `demo.db` (la pantalla avisa de cuántos registros se pierden). Nada de lo hecho en demo sobrevive ni toca los datos reales.
+- **Copias de seguridad:** `scripts/deploy.sh` y las copias documentadas cubren solo `app.db`; `demo.db` no se respalda.
+- `/healthz` y `/version` incluyen el modo (`{"estado":"ok","modo":"DEMO"}`).
+- Hay una sola `demo.db` que ve toda la aplicación: si dos personas practican a la vez, comparten los mismos datos de prueba.
+
+**Comprobación a primera hora del 29N:** el banner naranja ha desaparecido, `https://tiroriro.jdiaz.bid/version` devuelve `"modo":"REAL"` y en panel → Modo la hora del servidor es la de Madrid (de ella depende el cambio automático). Si algo falla, panel → Modo → «Pasar a REAL».
+
+## Bloqueos de IP
+
+Los intentos fallidos se cuentan por IP y **por separado**: contraseña de administrador (login, pantalla de modo y cambio de contraseña: 5 fallos en 15 minutos → bloqueo de 5 minutos) y PIN de agentes (15 fallos en 5 minutos → bloqueo de 5 minutos). Los agentes de un colegio comparten IP pública, y un fallo del administrador nunca los bloquea. Panel → **Bloqueos** muestra las IP bloqueadas y permite **desbloquear una IP** (por ámbito o todas). Si es el propio administrador el bloqueado, el bloqueo caduca solo a los 5 minutos (o se desbloquea desde otra red).
+
 ## IP real del cliente (`TRUST_PROXY`)
 
 El bloqueo de intentos de login es por IP, así que la app debe conocer la IP real. La cadena es *cliente → Cloudflare → Nginx Proxy Manager → app* y `TRUST_PROXY` indica cuántos saltos son de confianza:
@@ -109,6 +132,7 @@ Las fechas están en UTC. Si el contenedor no está arrancado, usa `docker compo
 
 ## Uso del panel de administración (0.2)
 
+- **Modo y Bloqueos:** ver las secciones anteriores.
 - **Mesas y censo:** alta, edición (incluido el censo) y baja de mesas. La baja no borra: la mesa queda marcada como "de baja".
 - **Agentes y PIN:** alta de agentes (nombre libre), asignación a una o varias mesas, y generación, regeneración o revocación del PIN de 6 dígitos. El PIN se muestra **una sola vez**, al generarlo; en la base de datos solo se guarda su HMAC. Dar de baja a un agente anula su PIN.
 - Toda modificación queda registrada en la tabla `auditoria` (la pantalla de histórico llega en la 0.4).

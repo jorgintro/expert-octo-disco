@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { abrirDb, migrar } from '../src/db.js';
+import { abrirDb, migrar, migrarApp } from '../src/db.js';
 import { sembrar } from '../src/seed.js';
 import { cargarConfig } from '../src/config.js';
 import { generarPin, hmacPin } from '../src/pin.js';
@@ -12,14 +12,15 @@ import { CONFIG } from './ayuda.js';
 
 const nuevaDb = () => {
   const db = abrirDb(':memory:');
-  migrar(db);
+  migrarApp(db);
   return db;
 };
 
 test('las migraciones son idempotentes', () => {
   const db = nuevaDb();
-  migrar(db);
-  assert.equal(db.prepare('SELECT COUNT(*) n FROM migracion').get().n, 1);
+  migrarApp(db);
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM migracion').get().n, 2);
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM migracion_captura').get().n, 1);
 });
 
 test('la base de datos usa WAL y claves foráneas', () => {
@@ -62,6 +63,20 @@ test('el seed es idempotente y no pisa datos editados', async () => {
   assert.equal(db.prepare("SELECT censo FROM mesa WHERE codigo = '4-2-A'").get().censo, 999);
   assert.equal(db.prepare("SELECT activa FROM mesa WHERE codigo = '5-31-U'").get().activa, 0);
   assert.equal(db.prepare('SELECT password_hash h FROM admin').get().h, hash);
+});
+
+test('ELECTION_DATE: valor por defecto 2026-11-29 y validación', () => {
+  const ok = {
+    SESSION_SECRET: 'a'.repeat(32),
+    PIN_HMAC_SECRET: 'b'.repeat(32),
+    ADMIN_USER: 'admin',
+    ADMIN_PASSWORD_INITIAL: 'una-contraseña-larga',
+  };
+  assert.equal(cargarConfig(ok).fechaElecciones, '2026-11-29');
+  assert.equal(cargarConfig({ ...ok, ELECTION_DATE: '2027-03-01' }).fechaElecciones, '2027-03-01');
+  for (const mala of ['29/11/2026', '2026-13-01', '2026-02-30', 'mañana', '2026-11-29T00:00']) {
+    assert.throws(() => cargarConfig({ ...ok, ELECTION_DATE: mala }), /ELECTION_DATE/, mala);
+  }
 });
 
 test('la configuración rechaza secretos ausentes, de ejemplo o cortos', () => {

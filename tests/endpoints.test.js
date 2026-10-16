@@ -9,13 +9,14 @@ test('/healthz responde ok', async () => {
   const { app } = await crearEntorno();
   const r = await app.inject('/healthz');
   assert.equal(r.statusCode, 200);
-  assert.deepEqual(r.json(), { estado: 'ok' });
+  assert.deepEqual(r.json(), { estado: 'ok', modo: 'DEMO' });
 });
 
 test('/version devuelve la versión de package.json', async () => {
   const { app } = await crearEntorno();
   const r = await app.inject('/version');
   assert.equal(r.json().version, version);
+  assert.equal(r.json().modo, 'DEMO');
 });
 
 test('la página de inicio muestra la versión, el acceso admin y cabeceras de seguridad', async () => {

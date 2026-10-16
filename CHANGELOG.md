@@ -2,6 +2,19 @@
 
 Formato de versión 0.X.y. La 1.0.0 solo se publica el día de las elecciones.
 
+## 0.3.1 — Fase 0.3, entrega 1: modo DEMO / REAL
+
+- **Datos separados:** `data/app.db` (configuración + captura real) y `data/demo.db` (solo captura de prueba y su auditoría, sin claves foráneas: referencia mesas y cortes de `app.db` por id). Migraciones nuevas: `002_bloqueo_ip.sql` y `migrations/captura/001_participacion.sql` (tabla `participacion`, aplicada a ambas bases).
+- **Aislamiento estructural:** toda la captura pasa por `src/captura.js`; el gestor (`src/datos.js`) entrega a las rutas solo la captura del destino del modo (`req.captura`). Una captura obtenida antes de un cambio de modo deja de valer (nunca escribe en otro destino). Una prueba comprueba que ninguna ruta tiene SQL de captura.
+- **Modo efectivo** = override manual o automático (`ELECTION_DATE`, por defecto 2026-11-29, hora de Madrid): DEMO antes, REAL desde las 00:00 de ese día, que anula los overrides fijados antes. Se evalúa en cada petición, sin cron, con reloj inyectable. Transiciones síncronas, atómicas e idempotentes (también ante peticiones simultáneas o caídas a medias).
+- **Pantalla «Modo de trabajo»:** modo, motivo, fecha y hora del servidor en Madrid; cambio con contraseña y palabra (`DEMO`/`REAL`, o `DEMO EN JORNADA` desde el día de las elecciones); aviso de cuántos registros se pierden; «Reiniciar demo». Todo se audita en `app.db`.
+- **Descarte automático:** entrar en DEMO parte de una demo vacía; salir a REAL elimina `demo.db`. El borrado usa una ruta constante y se niega a tocar `app.db`.
+- **Señalización:** banner naranja «MODO DEMO - datos de prueba» en todas las pantallas; indicador discreto en REAL; `/healthz` y `/version` incluyen el modo.
+- **Intentos por IP con contadores separados:** administrador (5 fallos en 15 min, bloqueo de 5 min; login, pantalla de modo y cambio de contraseña) y PIN de agentes (15 fallos en 5 min, bloqueo de 5 min; se usará en la 0.3.2). Nuevo panel «Bloqueos» con «Desbloquear IP».
+- La comprobación de arranque del build ahora también verifica la zona horaria `Europe/Madrid` y el ciclo DEMO → REAL.
+- `SPEC.md` (sección 9 bis, hoja de ruta 0.3.1/0.3.2, marca de agua DEMO en `/pantallazo`, lista de verificación del 29N) y `CLAUDE.md` actualizados.
+- Variable nueva `ELECTION_DATE` (opcional). `demo.db` no se respalda; `scripts/deploy.sh` ya copiaba solo `app.db`.
+
 ## 0.2.2 — Corrección de despliegue (Node 22 / Debian)
 
 - **Corregido:** la 0.2.1 entraba en bucle con código 139 (segfault) porque `better-sqlite3` 13 exige Node >= 22 y la imagen era `node:20-alpine`. La imagen pasa a `node:22-bookworm-slim` (Debian, glibc) en las dos etapas; las herramientas de compilación solo están en la etapa de build; sigue el cliente `sqlite3` y el usuario `node` (uid 1000).
