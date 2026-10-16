@@ -1,6 +1,7 @@
 // Vistas del resumen: panel de administración y lienzo de la vista /pantallazo.
 import { VACIO, formatoPorcentaje } from './participacion.js';
 import { TIPO_ELECCION, VARIANTES } from './resumen.js';
+import { tablaRecuento } from './vistasRecuento.js';
 import { crudo, html, recurso } from './vistas.js';
 
 const corto = (p) => formatoPorcentaje(p).replace(' %', '%');
@@ -100,21 +101,31 @@ function tablaUltimo(resumen) {
 </table>`;
 }
 
-export function lienzoPantallazo({ colegio, resumen, variante, modo, hora, fecha, texto }) {
+const selloRecuento = (r) =>
+  r.provisional
+    ? html`<p class="sello provisional">PROVISIONAL · ${r.cerradas}/${r.totalMesas} mesas escrutadas</p>`
+    : html`<p class="sello completo">COMPLETO · ${r.cerradas}/${r.totalMesas} mesas escrutadas</p>`;
+
+export function lienzoPantallazo({ colegio, resumen, resumenRecuento = null, variante, modo, hora, fecha, texto }) {
   const demo = modo === 'DEMO';
+  const esRecuento = variante.id === 'recuento';
   return html`<div class="lienzo" id="lienzo">
   ${demo ? html`<div class="marca-agua" aria-hidden="true"><span>DEMO</span></div>` : ''}
   <header class="lienzo-cabecera">
     <h1>${colegio}</h1>
-    <p class="subtitulo-lienzo">${TIPO_ELECCION} · ${variante.etiqueta}</p>
+    <p class="subtitulo-lienzo">${TIPO_ELECCION} · ${esRecuento ? 'Recuento del Congreso' : variante.etiqueta}</p>
     <p class="hora-pantallazo">Actualizado <time id="hora-actualizacion">${hora}</time></p>
     <p class="fecha-pantallazo">${fecha} · hora de Madrid</p>
   </header>
   ${sinConexion(hora)}
   ${demo ? html`<p class="sello demo">DEMO · DATOS DE PRUEBA</p>` : ''}
-  ${sello(resumen)}
-  ${variante.id === 'ultimo' ? tablaUltimo(resumen) : tablaParticipacion(resumen)}
-  ${resumen.provisional && resumen.indiceUltimo >= 0 ? html`<p class="nota-lienzo">TOTAL: % sobre el censo de las mesas informadas.</p>` : ''}
+  ${esRecuento ? selloRecuento(resumenRecuento) : sello(resumen)}
+  ${esRecuento ? tablaRecuento(resumenRecuento) : variante.id === 'ultimo' ? tablaUltimo(resumen) : tablaParticipacion(resumen)}
+  ${esRecuento
+    ? html`<p class="nota-lienzo">% sobre votos válidos (candidaturas + blancos). Solo mesas cerradas.</p>`
+    : resumen.provisional && resumen.indiceUltimo >= 0
+      ? html`<p class="nota-lienzo">TOTAL: % sobre el censo de las mesas informadas.</p>`
+      : ''}
 </div>
 <section class="controles" aria-label="Controles de la captura">
   <nav class="pildoras" aria-label="Variante">

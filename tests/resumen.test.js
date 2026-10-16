@@ -64,10 +64,10 @@ test('solo cuentan las mesas que se pasan (las de baja no) aunque haya datos suy
   assert.equal(r.totales[0].acumulado, 100);
 });
 
-test('variantes: el recuento está preparado pero no disponible; una variante desconocida cae en participación', () => {
-  assert.deepEqual(VARIANTES.map((v) => [v.id, v.disponible]), [['participacion', true], ['ultimo', true], ['recuento', false]]);
+test('variantes: participación, último corte y recuento; una variante desconocida cae en participación', () => {
+  assert.deepEqual(VARIANTES.map((v) => [v.id, v.disponible]), [['participacion', true], ['ultimo', true], ['recuento', true]]);
   assert.equal(elegirVariante('ultimo').id, 'ultimo');
-  assert.equal(elegirVariante('recuento').id, 'participacion');
+  assert.equal(elegirVariante('recuento').id, 'recuento');
   assert.equal(elegirVariante('x').id, 'participacion');
   assert.equal(elegirVariante(undefined).id, 'participacion');
 });

@@ -219,14 +219,13 @@ test('la marca de agua sigue al modo: al cambiar a REAL desaparece en la siguien
   assert.ok((await pantallazo(e)).body.includes('marca-agua'));
 });
 
-test('pantallazo: selector de variantes con el recuento preparado pero desactivado, y botón de copiar con el texto', async () => {
+test('pantallazo: selector de variantes (con el recuento) y botón de copiar con el texto', async () => {
   const e = await entorno();
   e.rellenar(DATOS);
   const r = await pantallazo(e, 'ultimo');
   assert.match(r.body, /<a class="pildora" href="\/pantallazo\?variante=participacion">Participación<\/a>/);
   assert.match(r.body, /<a class="pildora activa" href="\/pantallazo\?variante=ultimo" aria-current="true">Último corte<\/a>/);
-  assert.match(r.body, /<span class="pildora desactivada" aria-disabled="true"[^>]*>Recuento<\/span>/);
-  assert.ok(!/href="\/pantallazo\?variante=recuento"/.test(r.body), 'el recuento aún no es navegable');
+  assert.match(r.body, /<a class="pildora" href="\/pantallazo\?variante=recuento">Recuento<\/a>/);
   assert.match(r.body, /<button type="button" class="boton" data-copiar>Copiar como texto<\/button>/);
   assert.match(r.body, /data-captura>Modo captura</);
   assert.match(r.body, /<textarea id="texto-whatsapp" class="texto-wa" readonly rows="10">/);

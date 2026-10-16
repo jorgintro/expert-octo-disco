@@ -4,11 +4,11 @@ import { VACIO, construirHistorial, formatoPorcentaje, porcentajeSobreCenso } fr
 
 export const TIPO_ELECCION = 'Elecciones Generales';
 
-// Variantes de la vista /pantallazo. El recuento llega en la 0.5: el selector ya lo contempla.
+// Variantes de la vista /pantallazo.
 export const VARIANTES = [
   { id: 'participacion', etiqueta: 'Participación', disponible: true },
   { id: 'ultimo', etiqueta: 'Último corte', disponible: true },
-  { id: 'recuento', etiqueta: 'Recuento', disponible: false },
+  { id: 'recuento', etiqueta: 'Recuento', disponible: true },
 ];
 export const VARIANTE_POR_DEFECTO = 'participacion';
 

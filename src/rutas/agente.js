@@ -1,4 +1,9 @@
 import { auditar } from '../auditoria.js';
+import { hojaCandidaturas } from '../candidaturas.js';
+import { codigoHttp, entradaDeBody, esPeticionFetch, jsonDeResultado, valoresDeEntrada, versionDeBody } from '../entradaRecuento.js';
+import { recuentoAbierto } from '../recuentoEstado.js';
+import { cargarMesaRecuento, comprobarAcceso, guardarRecuentoMesa } from '../servicioRecuento.js';
+import { ESTADOS_MESA, bloqueConfirmarCierre, formularioRecuento, valoresDeDatos, vistaSoloLectura } from '../vistasRecuento.js';
 import { crearCsrfLogin, textoSeguro } from '../csrfLogin.js';
 import { estaBloqueada, registrarFallo } from '../limiteIntentos.js';
 import { construirHistorial, corteActual } from '../participacion.js';
@@ -129,6 +134,18 @@ export default async function rutasAgente(app) {
       return responder(reply, paginaAgente('Tus mesas', req.ctx(), cuerpo.texto));
     });
 
+    // Con el recuento cerrado los agentes no ven nada del recuento; abierto, ven el estado de su mesa y el acceso.
+    function tarjetaRecuento(req, mesa) {
+      if (!recuentoAbierto(db, req.modo.modo)) return '';
+      const { cab } = req.captura.obtenerRecuento(mesa.id);
+      const estado = cab?.estado ?? 'sin_iniciar';
+      return html`<section class="tarjeta">
+  <h2>Recuento del Congreso</h2>
+  <p class="estado-mesa ${estado}">${ESTADOS_MESA[estado]}</p>
+  <p><a class="boton" href="/agente/mesa/${mesa.id}/recuento">${estado === 'cerrado' ? 'Ver el recuento' : 'Abrir el recuento'}</a></p>
+</section>`;
+    }
+
     function pantallaMesa(req, mesa, { corteId = null, valor = null, error = null, confirmacion = null } = {}) {
       const datos = datosDeMesa(db, req.captura, mesa.id);
       const actual = corteActual(datos.cortes, horaMadrid(req.modo.ahora));
@@ -162,6 +179,7 @@ export default async function rutasAgente(app) {
   ${fila ? html`<p class="nota">Último dato: <strong>${fila.votantes_acumulados}</strong> · ${autorDe(db, fila)}</p>` : ''}
   ${tarjeta}
 </section>
+${tarjetaRecuento(req, mesa)}
 ${selectorCortes({ cortes: datos.cortes, filas: datos.filas, seleccionadoId: corte.id, actualId: actual.id, urlBase })}
 <h2>Histórico de la mesa</h2>
 ${tablaHistorial({ filas: construirHistorial({ cortes: datos.cortes, filas: datos.filas, censo: mesa.censo }), urlBase })}`;
@@ -196,6 +214,79 @@ ${tablaHistorial({ filas: construirHistorial({ cortes: datos.cortes, filas: dato
           return reply.redirect(`/agente/mesa/${mesa.id}?corte=${corteId}&ok=${r.estado === 'guardado' ? 'dato_guardado' : 'dato_sin_cambios'}`);
       }
     });
+
+    // ---------- Recuento del Congreso (solo con el recuento abierto) ----------
+    const baseRecuento = (mesa) => `/agente/mesa/${mesa.id}/recuento`;
+    const ctxRecuento = (req, extra = {}) => req.ctx({ hojas: [hojaCandidaturas(db).url], ...extra });
+
+    function pantallaRecuento(req, mesa, { entrada = null, error = null, confirmacion = null, version = null } = {}) {
+      const datos = cargarMesaRecuento(db, req.captura, mesa.id);
+      const ctx = ctxRecuento(req, { error });
+      const acceso = comprobarAcceso({ db, actor: req.actor, cab: datos.cab, modo: req.modo.modo });
+      if (acceso?.estado === 'recuento_cerrado') {
+        return { codigo: 403, pagina: paginaAgente(`Recuento · Mesa ${mesa.codigo}`, ctx, html`<section class="tarjeta"><p class="aviso-bloqueo" role="alert">${acceso.mensaje} Cuando el Jefe de Colegio lo abra, aparecerá aquí.</p></section><p><a href="/agente/mesa/${mesa.id}">Volver a la mesa</a></p>`.texto) };
+      }
+      if (acceso) {
+        const cuerpo = html`${vistaSoloLectura({ datos, mensaje: acceso.mensaje })}<p><a href="/agente/mesa/${mesa.id}">Volver a la mesa</a></p>`;
+        return { codigo: 200, pagina: paginaAgente(`Recuento · Mesa ${mesa.codigo}`, ctx, cuerpo.texto) };
+      }
+      const cuerpo = confirmacion
+        ? bloqueConfirmarCierre({
+            csrf: req.sesion.csrf, base: baseRecuento(mesa), datos, version: confirmacion.version,
+            valores: { votantes: String(confirmacion.valores.votantes), blancos: String(confirmacion.valores.blancos), nulos: String(confirmacion.valores.nulos), votos: confirmacion.valores.votos },
+            avisos: confirmacion.avisos, suma: confirmacion.suma, urlVolver: baseRecuento(mesa), rol: 'agente',
+          })
+        : html`${formularioRecuento({
+            csrf: req.sesion.csrf, base: baseRecuento(mesa), datos,
+            valores: entrada ? valoresDeEntrada(entrada) : valoresDeDatos(datos), version: version ?? datos.cab?.version ?? 0, rol: 'agente',
+          })}<p><a href="/agente/mesa/${mesa.id}">Volver a la mesa</a></p>`;
+      return { codigo: 200, pagina: paginaAgente(`Recuento · Mesa ${mesa.codigo}`, ctx, cuerpo.texto) };
+    }
+
+    priv.get('/agente/mesa/:id/recuento', async (req, reply) => {
+      const mesa = mesaDelAgente(req.agente.id, req.params.id);
+      if (!mesa) return denegada(req, reply);
+      const { codigo, pagina } = pantallaRecuento(req, mesa);
+      return responder(reply, pagina, codigo);
+    });
+
+    async function guardarRecuento(req, reply, { cerrar }) {
+      const mesa = mesaDelAgente(req.agente.id, req.params.id);
+      if (!mesa) return esPeticionFetch(req) ? reply.code(403).send({ ok: false, estado: 'bloqueado', mensaje: 'Esa mesa no es tuya o no existe.' }) : denegada(req, reply);
+      const datos = cargarMesaRecuento(db, req.captura, mesa.id);
+      const entrada = entradaDeBody(req.body, datos.candidaturas);
+      const version = versionDeBody(req.body);
+      const r = version === null
+        ? { estado: 'error', errores: ['Versión de la mesa no válida: recarga la página.'] }
+        : guardarRecuentoMesa({
+            db, captura: req.captura, actor: req.actor, mesaId: mesa.id, entrada, version, cerrar,
+            confirmar: req.body?.confirmar === '1', automatico: req.body?.auto === '1', modo: req.modo.modo,
+          });
+      if (esPeticionFetch(req)) return reply.code(codigoHttp(r)).send(jsonDeResultado(r));
+      switch (r.estado) {
+        case 'guardado': return reply.redirect(`${baseRecuento(mesa)}?ok=recuento_guardado`);
+        case 'cerrado': return reply.redirect(`/agente/mesa/${mesa.id}?ok=recuento_mesa_cerrada`);
+        case 'confirmar': {
+          const p = pantallaRecuento(req, mesa, { confirmacion: r });
+          return responder(reply, p.pagina, p.codigo);
+        }
+        case 'conflicto': {
+          const p = pantallaRecuento(req, mesa, { entrada, error: r.mensaje, version: r.versionActual });
+          return responder(reply, p.pagina, 409);
+        }
+        case 'error': {
+          const p = pantallaRecuento(req, mesa, { entrada, error: r.errores.join(' ') });
+          return responder(reply, p.pagina, 422);
+        }
+        default: {
+          const p = pantallaRecuento(req, mesa);
+          return responder(reply, p.pagina, codigoHttp(r) === 404 ? 404 : p.codigo === 200 ? codigoHttp(r) : p.codigo);
+        }
+      }
+    }
+
+    priv.post('/agente/mesa/:id/recuento/guardar', (req, reply) => guardarRecuento(req, reply, { cerrar: false }));
+    priv.post('/agente/mesa/:id/recuento/cerrar', (req, reply) => guardarRecuento(req, reply, { cerrar: true }));
 
     priv.post('/agente/salir', async (req, reply) => {
       borrarSesionDeTipo(db, config.sessionSecret, req.cookies[COOKIE], 'agente');

@@ -68,6 +68,11 @@ export function bannerModo(modo) {
 export const pieModo = (modo) => (modo === 'DEMO' ? ' · <strong>MODO DEMO</strong>' : ' · Modo REAL');
 
 const AVISOS = {
+  recuento_abierto: 'Recuento abierto.',
+  recuento_cerrado: 'Recuento cerrado.',
+  recuento_guardado: 'Recuento guardado.',
+  recuento_mesa_cerrada: 'Mesa cerrada.',
+  recuento_reabierta: 'Mesa reabierta: vuelve a estar en borrador.',
   candidatura_creada: 'Candidatura creada.',
   candidatura_guardada: 'Candidatura guardada.',
   candidatura_movida: 'Orden actualizado.',
@@ -100,6 +105,7 @@ export function paginaAdmin(titulo, { csrf, aviso: textoAviso, error, hojas = []
     html`<nav class="nav" aria-label="Administración">
   <a href="/admin/resumen">Resumen</a>
   <a href="/admin/participacion">Participación</a>
+  <a href="/admin/recuento">Recuento</a>
   <a href="/pantallazo">Pantallazo</a>
   <form method="post" action="/admin/logout">
     <input type="hidden" name="_csrf" value="${csrf}">

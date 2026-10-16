@@ -19,7 +19,7 @@ export function auditar(db, actor, accion, entidad, entidadId, anterior = null, 
 // Entidades cuya auditoría es de CAPTURA (vive en la base del modo: demo.db o app.db).
 export const ENTIDADES_CAPTURA = ['participacion', 'recuento'];
 
-function condiciones({ mesa = null, actor = null, accion = null } = {}, excluirEntidades = []) {
+function condiciones({ mesa = null, actor = null, accion = null, excluirAcciones = [] } = {}, excluirEntidades = []) {
   const donde = [];
   const params = [];
   if (actor) {
@@ -36,6 +36,10 @@ function condiciones({ mesa = null, actor = null, accion = null } = {}, excluirE
       CASE WHEN json_valid(valor_nuevo) THEN json_extract(valor_nuevo, '$.mesa_id') END,
       CASE WHEN json_valid(valor_anterior) THEN json_extract(valor_anterior, '$.mesa_id') END) = ?))`);
     params.push(mesa, mesa);
+  }
+  if (excluirAcciones.length > 0 && !accion) {
+    donde.push(`accion NOT IN (${excluirAcciones.map(() => '?').join(', ')})`);
+    params.push(...excluirAcciones);
   }
   if (excluirEntidades.length > 0) {
     donde.push(`entidad NOT IN (${excluirEntidades.map(() => '?').join(', ')})`);
