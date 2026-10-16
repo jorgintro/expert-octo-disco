@@ -1,0 +1,102 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { abrirDb, migrar } from '../src/db.js';
+import { sembrar } from '../src/seed.js';
+import { cargarConfig } from '../src/config.js';
+import { generarPin, hmacPin } from '../src/pin.js';
+import { CONFIG } from './ayuda.js';
+
+const nuevaDb = () => {
+  const db = abrirDb(':memory:');
+  migrar(db);
+  return db;
+};
+
+test('las migraciones son idempotentes', () => {
+  const db = nuevaDb();
+  migrar(db);
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM migracion').get().n, 1);
+});
+
+test('la base de datos usa WAL y claves foráneas', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'tiroriro-'));
+  try {
+    const db = abrirDb(path.join(dir, 'app.db'));
+    assert.equal(db.pragma('journal_mode', { simple: true }), 'wal');
+    assert.equal(db.pragma('foreign_keys', { simple: true }), 1);
+    db.close();
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('el seed crea colegio, 6 mesas (censo 4181), 6 cortes y el administrador', async () => {
+  const db = nuevaDb();
+  await sembrar(db, CONFIG);
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM colegio').get().n, 1);
+  const mesas = db.prepare('SELECT COUNT(*) n, SUM(censo) censo FROM mesa').get();
+  assert.deepEqual({ ...mesas }, { n: 6, censo: 4181 });
+  assert.deepEqual(
+    db.prepare('SELECT hora FROM corte ORDER BY orden').all().map((c) => c.hora),
+    ['10:00', '12:00', '14:00', '16:00', '18:00', '20:00']
+  );
+  const admin = db.prepare('SELECT usuario, password_hash FROM admin').get();
+  assert.equal(admin.usuario, 'admin');
+  assert.match(admin.password_hash, /^\$argon2id\$/);
+});
+
+test('el seed es idempotente y no pisa datos editados', async () => {
+  const db = nuevaDb();
+  await sembrar(db, CONFIG);
+  db.prepare("UPDATE mesa SET censo = 999 WHERE codigo = '4-2-A'").run();
+  db.prepare("UPDATE mesa SET activa = 0 WHERE codigo = '5-31-U'").run();
+  const hash = db.prepare('SELECT password_hash h FROM admin').get().h;
+  await sembrar(db, { ...CONFIG, adminPasswordInitial: 'otra-contraseña-distinta' });
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM mesa').get().n, 6);
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM corte').get().n, 6);
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM admin').get().n, 1);
+  assert.equal(db.prepare("SELECT censo FROM mesa WHERE codigo = '4-2-A'").get().censo, 999);
+  assert.equal(db.prepare("SELECT activa FROM mesa WHERE codigo = '5-31-U'").get().activa, 0);
+  assert.equal(db.prepare('SELECT password_hash h FROM admin').get().h, hash);
+});
+
+test('la configuración rechaza secretos ausentes, de ejemplo o cortos', () => {
+  const ok = {
+    SESSION_SECRET: 'a'.repeat(32),
+    PIN_HMAC_SECRET: 'b'.repeat(32),
+    ADMIN_USER: 'admin',
+    ADMIN_PASSWORD_INITIAL: 'una-contraseña-larga',
+  };
+  assert.equal(cargarConfig(ok).adminUser, 'admin');
+  assert.throws(() => cargarConfig({}), (err) =>
+    ['SESSION_SECRET', 'PIN_HMAC_SECRET', 'ADMIN_USER', 'ADMIN_PASSWORD_INITIAL'].every((n) => err.message.includes(n))
+  );
+  assert.throws(() => cargarConfig({ ...ok, SESSION_SECRET: 'cambiame' }), /SESSION_SECRET/);
+  assert.throws(() => cargarConfig({ ...ok, PIN_HMAC_SECRET: 'corto' }), /PIN_HMAC_SECRET/);
+  assert.throws(() => cargarConfig({ ...ok, ADMIN_PASSWORD_INITIAL: 'corta' }), /ADMIN_PASSWORD_INITIAL/);
+});
+
+test('el PIN tiene 6 dígitos, el HMAC es determinista y no contiene el PIN', () => {
+  const db = nuevaDb();
+  const { pin, hmac } = generarPin(db, CONFIG.pinHmacSecret);
+  assert.match(pin, /^\d{6}$/);
+  assert.equal(hmac, hmacPin(CONFIG.pinHmacSecret, pin));
+  assert.notEqual(hmac, hmacPin('otro-secreto-distinto-de-32-caracteres', pin));
+  assert.ok(!hmac.includes(pin));
+});
+
+test('generarPin no devuelve un HMAC ya en uso', () => {
+  const db = nuevaDb();
+  const insertar = db.prepare('INSERT INTO agente (nombre, pin_hmac, creado_en) VALUES (?, ?, ?)');
+  // Ocupa la mitad del espacio de PIN (000000..499999): el generado debe quedar fuera.
+  db.transaction(() => {
+    for (let n = 0; n < 500_000; n++) {
+      insertar.run(`a${n}`, hmacPin(CONFIG.pinHmacSecret, String(n).padStart(6, '0')), 'x');
+    }
+  })();
+  const { pin } = generarPin(db, CONFIG.pinHmacSecret);
+  assert.ok(Number(pin) >= 500_000, `el PIN ${pin} ya estaba en uso`);
+});
