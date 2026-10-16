@@ -12,12 +12,19 @@ export const formatoPct = formatoPorcentaje2;
 export const porcentajeSenado = (votos, validas) => (validas > 0 ? Math.round((votos * 10000) / validas) / 100 : null);
 
 // ---------- Listas ----------
-// Clave de lista de un candidato: su partido, o su agrupación (mismo texto = misma lista), o él solo.
+// Agrupación: texto sin espacios sobrantes ni dobles (se guarda así) y clave de comparación sin tildes ni mayúsculas.
+export const limpiarAgrupacion = (texto) => String(texto ?? '').replace(/\s+/g, ' ').trim();
+export const claveAgrupacion = (texto) => limpiarAgrupacion(texto).normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+
+// Clave de lista de un candidato: su partido, o su agrupación (mismo texto normalizado = misma lista), o él solo.
 export function claveLista(c) {
   if (c.candidatura_id) return `p:${c.candidatura_id}`;
-  const agrupacion = String(c.agrupacion ?? '').trim().toLowerCase();
+  const agrupacion = claveAgrupacion(c.agrupacion);
   return agrupacion ? `a:${agrupacion}` : `c:${c.id}`;
 }
+
+// Partido o agrupación de un candidato, para mostrarlo junto a su nombre.
+export const partidoDe = (c) => c.partido_siglas || c.partido_nombre || limpiarAgrupacion(c.agrupacion) || '';
 
 // Listas en el orden de su primer candidato; dentro de cada una, por orden. Solo candidatos recibidos.
 export function agruparEnListas(candidatos) {
@@ -141,6 +148,34 @@ export function validarSenado({ valores, censo, etiquetas = new Map(), cerrar = 
   return { errores, avisos, suma, contadas };
 }
 
+// ---------- Estadística de bloque ----------
+// Solo cuentan las mesas CERRADAS en modo SÁBANA (las de totales no tienen matriz de marcas y se excluyen).
+// «Voto en bloque»: papeletas con todas las marcas del mismo partido o agrupación frente a «voto mixto»; se calcula
+// entre las papeletas de 2 o 3 marcas (con 1 marca no hay nada que mezclar).
+export function estadisticaBloque(cerradas) {
+  const sabana = cerradas.filter((f) => f.cab?.modo === 'sabana');
+  const m = (celda) => sabana.reduce((a, f) => a + (f.matriz.get(celda) ?? 0), 0);
+  const n3 = m('3:1') + m('3:0');
+  const n2 = m('2:1') + m('2:0');
+  const n1 = m('1:1');
+  const validas = n1 + n2 + n3;
+  const enBloque = m('2:1') + m('3:1');
+  const mixto = m('2:0') + m('3:0');
+  const base = enBloque + mixto;
+  return {
+    mesasSabana: sabana.length,
+    mesasCerradas: cerradas.length,
+    mesasTotales: cerradas.length - sabana.length,
+    validas,
+    porMarcas: [3, 2, 1].map((k) => { const n = [0, n1, n2, n3][k]; return { marcas: k, papeletas: n, porcentaje: porcentajeSenado(n, validas) }; }),
+    enBloque,
+    mixto,
+    porcentajeBloque: porcentajeSenado(enBloque, base),
+    porcentajeMixto: porcentajeSenado(mixto, base),
+    disponible: sabana.length > 0 && validas > 0,
+  };
+}
+
 // ---------- Resumen ----------
 // mesas: activas [{id, codigo, censo}]; candidatos: [{id, nombre, orden, activo, ...}] (con campos de lista);
 // registros: Map mesaId -> { cab, votos: Map, matriz: Map }. SOLO las mesas CERRADAS suman en los totales.
@@ -171,6 +206,7 @@ export function construirResumenSenado({ mesas, candidatos, registros }) {
     borradores: filasMesa.filter((f) => f.estado === 'borrador').length,
     sinIniciar: filasMesa.filter((f) => f.estado === 'sin_iniciar').length,
     provisional: cerradas.length < mesas.length,
+    bloque: estadisticaBloque(cerradas),
     candidatos: conPct,
     ranking: porVotos,
     partidos,
@@ -179,4 +215,37 @@ export function construirResumenSenado({ mesas, candidatos, registros }) {
     nulas,
     contadas: validas + blancas + nulas,
   };
+}
+
+// ---------- Texto para WhatsApp ----------
+export const TOP_INDIVIDUAL = 12;
+export const miles = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+const MARCA_DEMO = '*** DEMO - DATOS DE PRUEBA, NO SON REALES ***';
+
+// resumen: construirResumenSenado. Los TOP_INDIVIDUAL primeros, uno por línea; el resto SIEMPRE, en una línea compacta.
+export function textoSenado({ resumen, colegio, modo, actualizado, tipoEleccion }) {
+  const l = [];
+  if (modo === 'DEMO') l.push(MARCA_DEMO, '');
+  l.push(`*${colegio} · ${tipoEleccion}*`);
+  const estado = resumen.provisional ? 'PROVISIONAL' : 'COMPLETO';
+  l.push(`Senado — ${estado} (${resumen.cerradas}/${resumen.totalMesas} mesas escrutadas)`);
+  if (resumen.cerradas === 0) {
+    l.push('Todavía no hay mesas escrutadas.');
+  } else {
+    resumen.ranking.slice(0, TOP_INDIVIDUAL).forEach((c, i) => {
+      const partido = partidoDe(c.cand);
+      l.push(`${i + 1}. ${c.cand.nombre}${partido ? ` (${partido})` : ''}: ${miles(c.votos)} (${formatoPorcentaje2(c.porcentaje)})`);
+    });
+    const resto = resumen.ranking.slice(TOP_INDIVIDUAL);
+    if (resto.length > 0) l.push(`Resto (${resto.length}): ${resto.map((c) => `${c.cand.nombre} ${miles(c.votos)}`).join(' · ')}`);
+    l.push(`Válidas: ${miles(resumen.validas)} · En blanco: ${miles(resumen.blancas)} · Nulas: ${miles(resumen.nulas)} · *Total de papeletas: ${miles(resumen.contadas)}*`);
+    const b = resumen.bloque;
+    if (b.disponible && b.porcentajeBloque !== null) {
+      l.push(`Voto en bloque: ${formatoPorcentaje2(b.porcentajeBloque)} · mixto: ${formatoPorcentaje2(b.porcentajeMixto)} (datos de ${b.mesasSabana}/${b.mesasCerradas} mesas)`);
+    }
+    l.push('(% sobre papeletas válidas; cada elector marca hasta 3 nombres)');
+  }
+  l.push(`Actualizado: ${actualizado} (hora de Madrid)`);
+  if (modo === 'DEMO') l.push('', MARCA_DEMO);
+  return l.join('\n');
 }

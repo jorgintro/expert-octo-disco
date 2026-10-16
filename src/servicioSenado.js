@@ -126,6 +126,19 @@ export function reiniciarSenadoMesa({ db, captura, actor, mesaId, version }) {
   }
 }
 
+// Solo el administrador pasa una mesa de sábana a totales conservando las cifras (el agente no tiene esta opción).
+export function pasarSenadoATotales({ db, captura, actor, mesaId, version, estadoFinal = 'borrador' }) {
+  if (actor.tipo !== 'admin') throw new Error('Solo el administrador puede pasar una mesa del Senado a modo totales');
+  if (!cargarMesaSenado(db, captura, mesaId)) return { estado: 'no_encontrado' };
+  try {
+    const r = captura.convertirSenadoATotales({ mesaId, versionEsperada: version, actor, estadoFinal });
+    return r.cambiado ? { estado: 'convertida', version: r.version, estadoMesa: r.estado } : { estado: 'sin_cambios' };
+  } catch (e) {
+    if (e instanceof ConflictoVersionError) return { estado: 'conflicto', versionActual: e.versionActual, mensaje: MENSAJE_CONFLICTO };
+    throw e;
+  }
+}
+
 // ---------- Apertura y cierre del Senado (a mano; independiente del Congreso; el reloj nunca lo bloquea) ----------
 export function comprobarAperturaSenado({ db, modo, ahora }) {
   const motivos = [];

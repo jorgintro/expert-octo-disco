@@ -9,6 +9,7 @@
 import { auditar } from './auditoria.js';
 import { COLOR_DEFECTO, obtenerCandidatura } from './candidaturas.js';
 import { estructuraSenadoBloqueada } from './recuentoEstado.js';
+import { claveAgrupacion, limpiarAgrupacion } from './senado.js';
 
 export class ErrorCandidato extends Error {
   constructor(mensajes, codigo = 422) {
@@ -27,6 +28,43 @@ const SELECT = `SELECT s.id, s.nombre, s.orden, s.candidatura_id, s.agrupacion, 
 export const listarCandidatos = (db) => db.prepare(`${SELECT} ORDER BY s.orden, s.id`).all();
 export const obtenerCandidato = (db, id) => (Number.isInteger(id) ? db.prepare(`${SELECT} WHERE s.id = ?`).get(id) : undefined);
 
+// Agrupaciones ya escritas (grafía de la primera por orden), para ofrecerlas al teclear y para unificar variantes.
+export function agrupacionesExistentes(db, { excepto = 0 } = {}) {
+  const vistas = new Map();
+  for (const f of db.prepare("SELECT agrupacion FROM candidato_senado WHERE agrupacion != '' AND id != ? ORDER BY orden, id").all(excepto)) {
+    const clave = claveAgrupacion(f.agrupacion);
+    if (clave && !vistas.has(clave)) vistas.set(clave, limpiarAgrupacion(f.agrupacion));
+  }
+  return [...vistas.values()];
+}
+
+// Texto con el que se guarda una agrupación: limpio (sin espacios sobrantes ni dobles) y, si ya existe otra con la misma
+// clave (sin tildes ni mayúsculas), con la grafía de la existente: «pp», « PP » y «Pp» acaban siendo la misma lista.
+export function canonicaAgrupacion(db, texto, { excepto = 0 } = {}) {
+  const limpio = limpiarAgrupacion(texto);
+  const clave = claveAgrupacion(limpio);
+  if (!clave) return '';
+  return agrupacionesExistentes(db, { excepto }).find((a) => claveAgrupacion(a) === clave) ?? limpio;
+}
+
+// Unifica las agrupaciones ya guardadas (una sola grafía por clave). Idempotente; se ejecuta al migrar.
+export function normalizarAgrupaciones(db) {
+  const canonicas = new Map();
+  const sistema = { tipo: 'sistema', id: null };
+  db.transaction(() => {
+    for (const f of db.prepare("SELECT id, agrupacion FROM candidato_senado WHERE agrupacion != '' ORDER BY orden, id").all()) {
+      const limpio = limpiarAgrupacion(f.agrupacion);
+      const clave = claveAgrupacion(limpio);
+      if (!canonicas.has(clave)) canonicas.set(clave, limpio);
+      const destino = canonicas.get(clave);
+      if (destino !== f.agrupacion) {
+        db.prepare('UPDATE candidato_senado SET agrupacion = ? WHERE id = ?').run(destino, f.id);
+        auditar(db, sistema, 'editar', 'candidato_senado', f.id, { agrupacion: f.agrupacion }, { agrupacion: destino, motivo: 'agrupación normalizada' });
+      }
+    }
+  })();
+}
+
 const normalizar = (t) => String(t ?? '').replace(/\s+/g, ' ').trim();
 const marcado = (v) => v === '1' || v === 'on' || v === true;
 
@@ -36,7 +74,7 @@ export function leerCandidato(body, { db, idActual = null }) {
   const color = String(body.color ?? COLOR_DEFECTO).trim().toLowerCase();
   const crudoPartido = String(body.candidatura_id ?? '').trim();
   const candidaturaId = /^\d{1,9}$/.test(crudoPartido) ? Number(crudoPartido) : null;
-  const agrupacionCruda = normalizar(body.agrupacion);
+  const agrupacionCruda = canonicaAgrupacion(db, body.agrupacion, { excepto: idActual ?? 0 });
   // Ausente = desmarcada cuando el formulario incluye la estructura (campo oculto estructura=1).
   const activo = body.estructura === '1' || body.activo !== undefined ? marcado(body.activo) : true;
 

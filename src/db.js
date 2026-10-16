@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import { mkdirSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { normalizarAgrupaciones } from './candidatosSenado.js';
 import { raiz } from './version.js';
 
 export function abrirDb(ruta) {
@@ -38,6 +39,7 @@ export function migrar(db, dir = DIR_MIGRACIONES, tabla = 'migracion') {
 export function migrarApp(db) {
   migrar(db, DIR_MIGRACIONES, 'migracion');
   migrar(db, DIR_CAPTURA, 'migracion_captura');
+  normalizarAgrupaciones(db); // 0.6.2: una sola grafía por agrupación (idempotente)
 }
 
 // demo.db: solo las tablas de captura.

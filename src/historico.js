@@ -88,6 +88,10 @@ export function describir(fila, { mesas, cortes, candidaturas = new Map(), candi
       partes.push(`${m} marca${m === '1' ? '' : 's'}${m === '1' ? '' : s === '1' ? ' (mismo partido)' : ' (partidos distintos)'} ${sinRellenar(antes?.matriz?.[celda])} → ${sinRellenar(v)}`);
     }
     if (despues && 'estado' in despues) partes.push(`estado ${antes?.estado ?? 'sin iniciar'} → ${despues.estado}`);
+    if (fila.accion === 'pasar_a_totales') {
+      const estado = despues?.estado === 'cerrado' ? 'cerrada' : 'en borrador';
+      return `Mesa ${mesas.get(ref.mesa_id) ?? ref.mesa_id}: Senado pasado de sábana a totales conservando cifras (válidas ${sinRellenar(despues?.validas)}, en blanco ${sinRellenar(despues?.blancas)}, nulas ${sinRellenar(despues?.nulas)}); matriz de marcas descartada; estado ${antes?.estado ?? '—'} → ${estado}`;
+    }
     if (fila.accion === 'reiniciar') return `Mesa ${mesas.get(ref.mesa_id) ?? ref.mesa_id}: recuento del Senado reiniciado (modo ${antes?.modo === 'sabana' ? 'sábana a sábana' : 'totales'}, ${Object.keys(antes?.votos ?? {}).length} candidatos con datos)`;
     return `Senado · mesa ${mesas.get(ref.mesa_id) ?? ref.mesa_id}: ${partes.join(', ') || '—'}`;
   }
