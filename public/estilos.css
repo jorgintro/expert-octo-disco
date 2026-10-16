@@ -406,6 +406,9 @@ details.rec-otros[open] .rec-flecha { transform: rotate(180deg); }
 /* Kit del agente electoral */
 .kit-enlace { display: inline-flex; align-items: center; min-height: 2.75rem; padding: 0 0.5rem; font-weight: 600; }
 .cabecera-agente .agente-nombre { flex: 1; min-width: 0; }
+.kit-saludo { display: flex; align-items: center; gap: 0.75rem; margin-top: 0.75rem; }
+.kit-saludo img { flex: none; width: 6rem; height: 6rem; }
+.kit-saludo p { margin: 0; min-width: 0; }
 .kit-nav { margin-top: 0.75rem; }
 .kit-titulo { margin: 1rem 0 0.25rem; font-size: 1.3rem; }
 .kit-total { margin: 0.25rem 0 0.75rem; }
@@ -433,7 +436,7 @@ details.rec-otros[open] .rec-flecha { transform: rotate(180deg); }
 .kit-guia li { padding: 0.35rem 0; font-size: 1rem; line-height: 1.4; border-top: 1px solid var(--borde); }
 .kit-guia li:first-child { border-top: 0; }
 @media print {
-  .nav, .cabecera-agente, .kit-nav, .kit-botones, .kit-confirmar, .kit-texto-copia, .pie, #banner-modo, .barra-real { display: none !important; }
+  .nav, .cabecera-agente, .kit-nav, .kit-saludo, .kit-botones, .kit-confirmar, .kit-texto-copia, .pie, #banner-modo, .barra-real { display: none !important; }
   body { background: #fff; font-size: 11pt; }
   .tarjeta, .kit-seccion { border: 0; break-inside: avoid; }
 }

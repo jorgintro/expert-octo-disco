@@ -2,6 +2,10 @@
 
 Formato de versión 0.X.y. La 1.0.0 solo se publica el día de las elecciones.
 
+## 0.7.2 — Dulcinea en el kit
+
+- Dulcinea, la mascota (agente electoral), saluda en la cabecera del kit de agentes y administrador. Imagen WebP de 320 px servida por la propia app (`public/dulcinea.webp`), sin servicios externos, y oculta al imprimir.
+
 ## 0.7.1 — Fase 0.7: kit del agente electoral
 
 - **Kit del agente electoral** (apoderado/interventor, un único kit) en `/agente/kit` y `/admin/kit`: solo con sesión (PIN o administrador), con banner DEMO/REAL. Enlace «Kit» en la cabecera del agente y en el menú y la portada del administrador. No toca los datos de captura ni la base.
