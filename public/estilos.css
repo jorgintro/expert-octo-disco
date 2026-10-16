@@ -204,3 +204,14 @@ input[type="time"] { width: 100%; min-height: 3rem; padding: 0.5rem 0.75rem; fon
 .cod { white-space: nowrap; }
 
 .entrada .detalle { word-break: normal; overflow-wrap: anywhere; }
+
+/* ---- Base común de tablas y marcadores (0.5.1) ---- */
+[hidden] { display: none !important; }
+table, td, th, .num, .v, .p { font-variant-numeric: tabular-nums; }
+.vacia, .celda.vacia, td.vacia a { color: var(--suave); text-decoration: none; }
+.celda.vacia:hover { text-decoration: none; }
+.celda .dato { display: block; }
+.celda .marca-admin { display: inline-block; margin-top: 0.15rem; }
+.estado-baja { display: block; }
+.entrada-accion { font-weight: 700; margin: 0.15rem 0; }
+.entrada-meta { margin: 0.05rem 0; color: var(--suave); font-size: 0.9rem; }

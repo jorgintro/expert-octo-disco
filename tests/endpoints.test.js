@@ -36,3 +36,25 @@ test('sirve el CSS estático', async () => {
   assert.equal(r.statusCode, 200);
   assert.match(r.headers['content-type'], /text\/css/);
 });
+
+test('estáticos: Cache-Control no-cache con ETag (revalidan con 304) y versión en la URL del CSS', async () => {
+  const { app } = await crearEntorno();
+  for (const url of ['/estilos.css', '/agente.js', '/resumen.js']) {
+    const r = await app.inject(url);
+    assert.equal(r.statusCode, 200, url);
+    assert.equal(r.headers['cache-control'], 'no-cache', url);
+    assert.ok(r.headers.etag, `${url} lleva ETag`);
+    const condicional = await app.inject({ url, headers: { 'if-none-match': r.headers.etag } });
+    assert.equal(condicional.statusCode, 304, `${url} se revalida con 304`);
+  }
+  const inicio = await app.inject('/');
+  assert.match(inicio.body, new RegExp(`href="/estilos\\.css\\?v=${version.replaceAll('.', '\\.')}"`));
+});
+
+test('la hoja de estilos hace que [hidden] oculte de verdad y pinta los vacíos en gris', async () => {
+  const { app } = await crearEntorno();
+  const css = (await app.inject('/estilos.css')).body;
+  assert.match(css, /\[hidden\]\s*\{\s*display:\s*none\s*!important/);
+  assert.match(css, /font-variant-numeric:\s*tabular-nums/);
+  assert.match(css, /\.celda\.vacia/);
+});

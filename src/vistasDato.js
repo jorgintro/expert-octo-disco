@@ -1,9 +1,9 @@
 // Piezas HTML comunes de la captura de participación (vista del agente y del administrador).
-import { formatoPorcentaje } from './participacion.js';
+import { VACIO, formatoPorcentaje } from './participacion.js';
 import { formatearMadrid } from './tiempo.js';
-import { html } from './vistas.js';
+import { html, recurso } from './vistas.js';
 
-const SCRIPT = html`<script src="/agente.js" defer></script>`;
+const SCRIPT = html`<script src="${recurso('/agente.js')}" defer></script>`;
 
 export function formularioDato({ csrf, accion, corteId = null, valor = '', boton = 'Guardar' }) {
   return html`<form method="post" action="${accion}" class="formulario form-dato">
@@ -52,7 +52,7 @@ export function tablaHistorial({ filas, urlBase = null }) {
     ${filas.map((f) => {
       const hora = urlBase ? html`<a href="${urlBase}?corte=${f.corte.id}">${f.corte.hora}</a>` : f.corte.hora;
       return f.vacio
-        ? html`<tr class="vacia"><td>${hora}</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>`
+        ? html`<tr class="vacia"><td>${hora}</td><td class="num vacia">${VACIO}</td><td class="num vacia">${VACIO}</td><td class="num vacia">${VACIO}</td></tr>`
         : html`<tr><td>${hora}${f.tipo === 'admin' ? html` <span class="marca-admin" title="Introducido por el administrador">A</span>` : ''}</td><td class="num">${f.acumulado}</td><td class="num">${f.parcial}</td><td class="num">${formatoPorcentaje(f.porcentaje)}</td></tr>`;
     })}
   </tbody>

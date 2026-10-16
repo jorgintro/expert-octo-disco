@@ -1,5 +1,6 @@
 import { auditar } from '../auditoria.js';
 import { borrarSesionesDeActor } from '../sesiones.js';
+import { VACIO } from '../participacion.js';
 import { generarPin } from '../pin.js';
 import { crudo, html, paginaAdmin, responder } from '../vistas.js';
 
@@ -61,8 +62,8 @@ export default async function rutasAgentes(app) {
   <tbody>
     ${agentes.map(
       (a) => html`<tr>
-      <td><a href="/admin/agentes/${a.id}">${a.nombre}</a>${a.activo ? '' : ' (de baja)'}</td>
-      <td>${codigosAsignados(a.id).join(', ') || '—'}</td>
+      <td><a href="/admin/agentes/${a.id}">${a.nombre}</a>${a.activo ? '' : html`<span class="nota estado-baja">de baja</span>`}</td>
+      <td>${codigosAsignados(a.id).join(', ') || VACIO}</td>
       <td>${a.pin_hmac ? 'Sí' : 'No'}</td>
     </tr>`
     )}

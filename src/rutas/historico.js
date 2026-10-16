@@ -55,7 +55,9 @@ ${h.filas.length === 0 ? html`<p>No hay registros con estos filtros.</p>` : ''}
 ${h.filas.map(
   (f) => html`<article class="entrada${f.origen === 'demo' ? ' entrada-demo' : ''}">
   <p class="entrada-cab"><time>${formatearMadrid(f.fecha)}</time>${f.origen === 'demo' ? html` <span class="etiqueta-demo">DEMO</span>` : ''}</p>
-  <p><strong>${etiquetaAccion(f.accion)}</strong> · ${f.entidad} · ${nombreActor(f, nombres)}</p>
+  <p class="entrada-accion">${etiquetaAccion(f.accion)}</p>
+  <p class="entrada-meta">${nombreActor(f, nombres)}</p>
+  <p class="entrada-meta">${f.entidad}</p>
   <p class="detalle">${describir(f, nombres)}</p>
 </article>`
 )}

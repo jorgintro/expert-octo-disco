@@ -90,7 +90,7 @@ test('panel resumen: hora de la última actualización visible, sondeo y banner 
   assert.match(r.body, /Actualizado: <time id="hora-actualizacion">12:34:56<\/time>/);
   assert.match(r.body, /20\/10\/2026 · hora de Madrid/);
   assert.match(r.body, /id="sondeo" data-intervalo="5000"/);
-  assert.match(r.body, /<script src="\/resumen\.js" defer><\/script>/);
+  assert.match(r.body, /<script src="\/resumen\.js\?v=[\d.]+" defer><\/script>/);
   assert.match(r.body, /PROVISIONAL · sin datos todavía/);
   assert.ok(r.body.includes(BANNER));
 
@@ -152,8 +152,8 @@ test('pantallazo «Participación»: mesas en filas, solo los cortes con datos y
   const r = await pantallazo(e, 'participacion');
   assert.match(r.body, /<thead><tr><th>Mesa<\/th><th>10h<\/th><th>12h<\/th><\/tr><\/thead>/, 'solo 10h y 12h (no hay datos de 14h, 16h...)');
   assert.match(r.body, /<th scope="row">4-2-A<\/th><td><span class="v">100<\/span><span class="p">16,3%<\/span><\/td><td><span class="v">250<\/span><span class="p">40,7%<\/span><\/td>/);
-  assert.match(r.body, /<th scope="row">4-3-A<\/th><td><span class="v">150<\/span><span class="p">19,9%<\/span><\/td><td class="vacia">—<\/td>/);
-  assert.match(r.body, /<th scope="row">5-18-U<\/th><td class="vacia">—<\/td><td class="vacia">—<\/td>/);
+  assert.match(r.body, /<th scope="row">4-3-A<\/th><td><span class="v">150<\/span><span class="p">19,9%<\/span><\/td><td class="vacia">–<\/td>/);
+  assert.match(r.body, /<th scope="row">5-18-U<\/th><td class="vacia">–<\/td><td class="vacia">–<\/td>/);
   assert.match(r.body, /<tr class="total"><th scope="row">TOTAL<\/th><td><span class="v">540<\/span><span class="p">19,2%<\/span><\/td><td><span class="v">480<\/span><span class="p">38,8%<\/span><\/td>/);
   assert.match(r.body, /<tr class="informadas"><th scope="row">Mesas<\/th><td>4\/6<\/td><td>2\/6<\/td>/);
   assert.match(r.body, /TOTAL: % sobre el censo de las mesas informadas/);

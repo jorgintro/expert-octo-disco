@@ -1,6 +1,6 @@
 // Resumen de participación del colegio: tabla mesa x corte, totales, mesas pendientes y texto para
 // WhatsApp. Funciones puras (sin acceso a datos ni al reloj).
-import { construirHistorial, formatoPorcentaje, porcentajeSobreCenso } from './participacion.js';
+import { VACIO, construirHistorial, formatoPorcentaje, porcentajeSobreCenso } from './participacion.js';
 
 export const TIPO_ELECCION = 'Elecciones Generales';
 
@@ -97,7 +97,7 @@ export function textoWhatsApp({ resumen, variante, colegio, modo, actualizado })
       const ultimaConDato = [...celdas].reverse().find((c) => !c.vacio);
       lineas.push(
         ultimaConDato
-          ? `${mesa.codigo}: ${celdas.map((c) => (c.vacio ? '—' : c.acumulado)).join(' → ')} · ${formatoPorcentaje(ultimaConDato.porcentaje)}`
+          ? `${mesa.codigo}: ${celdas.map((c) => (c.vacio ? VACIO : c.acumulado)).join(' → ')} · ${formatoPorcentaje(ultimaConDato.porcentaje)}`
           : `${mesa.codigo}: sin datos`
       );
     }

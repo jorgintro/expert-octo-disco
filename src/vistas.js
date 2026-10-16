@@ -34,7 +34,11 @@ export function html(trozos, ...valores) {
   return new Crudo(salida);
 }
 
-export function pagina(titulo, cuerpo, { claseBody = '' } = {}) {
+// URL de un recurso estático con la versión de la app: al desplegar una versión nueva el navegador
+// no puede quedarse con un CSS/JS antiguo (los estáticos se sirven con no-cache + ETag).
+export const recurso = (ruta) => `${ruta}?v=${version}`;
+
+export function pagina(titulo, cuerpo, { claseBody = '', hojas = [] } = {}) {
   return `<!doctype html>
 <html lang="es">
 <head>
@@ -42,7 +46,7 @@ export function pagina(titulo, cuerpo, { claseBody = '' } = {}) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>${esc(titulo)}</title>
-<link rel="stylesheet" href="/estilos.css">
+<link rel="stylesheet" href="${recurso('/estilos.css')}">${hojas.map((h) => `\n<link rel="stylesheet" href="${esc(h)}">`).join('')}
 </head>
 <body${claseBody ? ` class="${esc(claseBody)}"` : ''}>
 <!--MODO_BANNER-->
@@ -85,7 +89,7 @@ const AVISOS = {
 };
 export const aviso = (codigo) => AVISOS[codigo] ?? null;
 
-export function paginaAdmin(titulo, { csrf, aviso: textoAviso, error } = {}, cuerpo = '') {
+export function paginaAdmin(titulo, { csrf, aviso: textoAviso, error, hojas = [] } = {}, cuerpo = '') {
   return pagina(
     titulo,
     html`<nav class="nav" aria-label="Administración">
@@ -113,7 +117,8 @@ export function paginaAdmin(titulo, { csrf, aviso: textoAviso, error } = {}, cue
 <h1>${titulo}</h1>
 ${textoAviso ? html`<p class="aviso" role="status">${textoAviso}</p>` : ''}
 ${error ? html`<p class="error" role="alert">${error}</p>` : ''}
-${crudo(cuerpo)}`.texto
+${crudo(cuerpo)}`.texto,
+    { hojas }
   );
 }
 
@@ -122,7 +127,7 @@ export function responder(reply, contenido, codigo = 200) {
 }
 
 // Pantallas de agente: cabecera con su nombre y botón de salir (el banner de modo lo pone `pagina`).
-export function paginaAgente(titulo, { csrf, aviso: textoAviso, error, agente } = {}, cuerpo = '') {
+export function paginaAgente(titulo, { csrf, aviso: textoAviso, error, agente, hojas = [] } = {}, cuerpo = '') {
   return pagina(
     titulo,
     html`<header class="cabecera-agente">
@@ -135,6 +140,7 @@ export function paginaAgente(titulo, { csrf, aviso: textoAviso, error, agente } 
 <h1>${titulo}</h1>
 ${textoAviso ? html`<p class="aviso" role="status">${textoAviso}</p>` : ''}
 ${error ? html`<p class="error" role="alert">${error}</p>` : ''}
-${crudo(cuerpo)}`.texto
+${crudo(cuerpo)}`.texto,
+    { hojas }
   );
 }
