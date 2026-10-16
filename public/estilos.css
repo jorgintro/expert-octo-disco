@@ -400,3 +400,5 @@ details.rec-otros[open] .rec-flecha { transform: rotate(180deg); }
 .rec-barra.bloque .relleno { fill: #455a64; }
 .puesto { display: inline-block; min-width: 1.4rem; margin-right: 0.3rem; font-weight: 800; color: var(--suave); font-variant-numeric: tabular-nums; }
 .tabla-recuento .puesto { float: left; }
+.sen-total.total .rec-siglas { grid-column: auto; }
+.sen-resto-fila { grid-template-columns: minmax(0, 1fr); }

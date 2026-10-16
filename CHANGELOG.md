@@ -2,6 +2,18 @@
 
 Formato de versión 0.X.y. La 1.0.0 solo se publica el día de las elecciones.
 
+## 0.6.2 — Fase 0.6, segunda mitad: pantallazo del Senado
+
+- **Orden por votos**: en el pantallazo y en el panel `/admin/senado`, los candidatos van en una sola clasificación de mayor a menor número de votos (desempate: orden de la papeleta), recalculada en cada refresco; la matriz candidato × mesa conserva ese orden.
+- **Pantallazo → Senado** (el selector ya existía): cabecera «Elecciones Generales · Senado», Provisional/Completo con mesas escrutadas n/N, marca de agua DEMO y franja SIN CONEXIÓN. Cada candidato con posición, partido o agrupación, votos, % sobre papeletas válidas y barra del color del partido (color y logo heredados), sin resaltar a los 4 primeros. Los **12 primeros** a la vista; el resto en un desplegable «Resto (n)», cerrado por defecto, en letra pequeña. Debajo, válidas, blancas, nulas y total de papeletas.
+- **Estado de los desplegables** (Otros del Congreso, Resto del Senado) en `sessionStorage` por desplegable (`data-persistir`), con `try/catch`: el sondeo no los pliega, se conserva al cambiar de variante y en Modo captura.
+- **Estadística de bloque**: papeletas válidas por número de marcas (3, 2, 1) con su % y voto en bloque frente a voto mixto (entre las papeletas de 2 o 3 marcas), solo con las mesas cerradas en modo sábana: «datos de n/N mesas», con las de totales excluidas e indicadas; sin datos, no aparece.
+- **Texto de WhatsApp del Senado**: cabecera con colegio, mesas n/N y marcas DEMO y PROVISIONAL; los 12 primeros uno por línea; el resto **siempre** en una línea compacta; válidas, blancas, nulas y total; y la línea de bloque.
+- **Agrupación normalizada**: sin espacios sobrantes ni dobles, comparada sin mayúsculas ni tildes; el formulario ofrece las existentes y una variante adopta la grafía de la que ya existe. Las guardadas se unifican al migrar (idempotente, auditado).
+- **Pasar a modo totales conservando cifras** (solo administrador): copia votos por candidato, válidas, blancas y nulas al modo totales (editable), descarta la matriz de marcas («datos de bloque no disponibles»), con confirmación, elección de dejar la mesa cerrada o reabierta y auditoría con valores anteriores y nuevos. El agente no ve esta opción. El reinicio completo se mantiene.
+- Prueba de que, al pasar de DEMO a REAL (se borra `demo.db`), un candidato (o candidatura) que solo tenía votos de prueba se puede borrar y uno con votos reales no.
+- SPEC.md actualizado; sin cambios en la comprobación de arranque más allá de lo ya cubierto.
+
 ## 0.6.1 — Fase 0.6, primera mitad: recuento del Senado
 
 - **Candidatos del Senado** (panel → Más → *Candidatos Senado*): alta, edición, orden (posición en la papeleta), activo/inactivo, partido asociado (una candidatura del Congreso, de la que hereda color y logo), o, sin partido, agrupación y color propios. Sin candidatos fijos en el código ni en el seed. Configuración compartida por DEMO y REAL. No se borra un candidato con votos (solo se desactiva) ni una candidatura con candidatos del Senado asociados. Con el Senado activado, alta, borrado, orden y activo quedan bloqueados.

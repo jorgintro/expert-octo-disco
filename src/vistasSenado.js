@@ -286,8 +286,6 @@ export function tablaSenado(resumen) {
   if (resumen.ranking.length === 0) return html`<p class="sin-datos">No hay candidatos cargados.</p>`;
   const primeros = resumen.ranking.slice(0, TOP_INDIVIDUAL);
   const resto = resumen.ranking.slice(TOP_INDIVIDUAL);
-  const votosResto = resto.reduce((a, c) => a + c.votos, 0);
-  const pctResto = resto.reduce((a, c) => a + (c.porcentaje ?? 0), 0);
   const fila = (c, i) => html`<div class="rec-fila sen-fila ${claseCand(c.cand)}">
   <span class="sen-pos">${i + 1}</span>
   <span class="rec-marca">${insigniaCandidato(c.cand)}</span>
@@ -302,8 +300,6 @@ export function tablaSenado(resumen) {
     ? html`<details class="rec-otros rec-resto" data-persistir="senado:resto">
     <summary><div class="rec-fila sen-resto-fila gris">
       <span class="sen-nombre"><span class="sen-cand">Resto (${resto.length})<span class="rec-flecha" aria-hidden="true"></span></span></span>
-      <span class="rec-votos">${sin ? VACIO : votosResto}</span>
-      <span class="rec-pct${sin ? ' vacia' : ''}">${sin ? '' : formatoPct(Math.round(pctResto * 100) / 100)}</span>
     </div></summary>
     <ol class="rec-pequenas sen-resto" start="${TOP_INDIVIDUAL + 1}">
       ${resto.map((c, i) => html`<li><span class="rp-pos">${TOP_INDIVIDUAL + i + 1}</span><span class="rp-siglas">${c.cand.nombre}${partidoDe(c.cand) ? html` <span class="rp-partido">${partidoDe(c.cand)}</span>` : ''}</span><span class="rp-votos">${sin ? VACIO : c.votos}</span><span class="rp-pct">${sin ? '' : formatoPct(c.porcentaje)}</span></li>`)}
